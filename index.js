@@ -6,6 +6,7 @@ import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
 const LS_OPACITY = 'jobsext_opacity';
+const LS_FAB = 'jobsext_fab_pos';
 
 /* ------------------------------------------------------------------ */
 /* i18n                                                                */
@@ -41,6 +42,14 @@ const I18N = {
         p_hour: 'hour', p_day: 'day', p_week: 'week', p_month: 'month', p_year: 'year', p_commission: 'commission', p_project: 'project',
         r_hour: 'per hour', r_project: 'per project', r_word: 'per word', r_commission: 'per commission',
         ts_pending: 'Pending', ts_active: 'Active', ts_done: 'Done', ts_failed: 'Failed', ts_cancelled: 'Cancelled',
+
+        g_unknown: 'Unknown', g_child: 'Child', g_teen: 'Teenager', g_adult: 'Adult', ageGroup: 'Age group', childNoJobs: 'Children cannot have jobs.',
+        resume: 'Resume', skills: 'Skills & abilities', seeking: 'Looking for', skillsPh: 'What this character can do: skills, education, experience…', seekingPh: 'What they want: field, schedule, pay, remote…',
+        insurance: 'Insurance', vacationDays: 'Vacation days / year', yes: 'yes', no: 'no', setSalary: 'set salary',
+        planned: 'Planned', plan: '📅 Plan', startNow: 'Start now', startEntry: '▶ Start', calendar: 'Add to Phone calendar', calFail: 'Could not add to the Phone-ST calendar.',
+        planVacation: 'Plan / start time off', coworkerNew: 'New coworker name', sec_pay: 'Salary & benefits', sec_leave: 'Time off', sec_tasks: 'Tasks', sec_aware: 'Awareness',
+        sec_more: 'Extras', s_fab: 'Show floating button', diag: 'Phone-ST diagnostics', diagHint: 'Copy this and send it to the developer if the bank or calendar does not connect.',
+        s_global: 'General', s_ai: 'AI & prompt', s_phone: 'Phone-ST',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -73,6 +82,14 @@ const I18N = {
         p_hour: 'час', p_day: 'день', p_week: 'неделя', p_month: 'месяц', p_year: 'год', p_commission: 'заказ', p_project: 'проект',
         r_hour: 'за час', r_project: 'за проект', r_word: 'за слово', r_commission: 'за заказ',
         ts_pending: 'Ожидает', ts_active: 'В работе', ts_done: 'Готово', ts_failed: 'Провалено', ts_cancelled: 'Отменено',
+
+        g_unknown: 'Неизвестно', g_child: 'Ребёнок', g_teen: 'Подросток', g_adult: 'Взрослый', ageGroup: 'Возрастная группа', childNoJobs: 'У детей не бывает работы.',
+        resume: 'Резюме', skills: 'Навыки и умения', seeking: 'Что ищет', skillsPh: 'Что умеет персонаж: навыки, образование, опыт…', seekingPh: 'Чего хочет: сфера, график, оплата, удалёнка…',
+        insurance: 'Страховка', vacationDays: 'Дней отпуска в год', yes: 'да', no: 'нет', setSalary: 'укажите зарплату',
+        planned: 'Запланировано', plan: '📅 Запланировать', startNow: 'Начать сейчас', startEntry: '▶ Начать', calendar: 'Добавить в календарь телефона', calFail: 'Не удалось добавить в календарь Phone-ST.',
+        planVacation: 'Запланировать / начать отпуск', coworkerNew: 'Имя нового коллеги', sec_pay: 'Зарплата и условия', sec_leave: 'Отпуск и отгулы', sec_tasks: 'Задания', sec_aware: 'Кто знает',
+        sec_more: 'Дополнительно', s_fab: 'Показывать плавающую кнопку', diag: 'Диагностика Phone-ST', diagHint: 'Скопируйте и отправьте разработчику, если банк или календарь не подключаются.',
+        s_global: 'Основное', s_ai: 'ИИ и промпт', s_phone: 'Phone-ST',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -93,6 +110,7 @@ const CURRENCIES = ['₽', '$', '€', '£', '¥'];
 /* ------------------------------------------------------------------ */
 const DEFAULTS = {
     enabled: true,
+    showFab: true,
     lang: 'auto',
     adult: false,
     apiProfile: '',
@@ -156,11 +174,11 @@ const fmt = (n, cur) => `${cur || ''}${Number(n || 0).toLocaleString(undefined, 
 /* ------------------------------------------------------------------ */
 /* Data model                                                          */
 /* ------------------------------------------------------------------ */
-function newLeave() {
+function newLeave(vacationDays = 14) {
     return {
         enabled: true,
         balances: {
-            vacation: { allowance: 14, adj: 0 }, sick: { allowance: 10, adj: 0 }, maternity: { allowance: 90, adj: 0 },
+            vacation: { allowance: vacationDays, adj: 0 }, sick: { allowance: 10, adj: 0 }, maternity: { allowance: 90, adj: 0 },
             paternity: { allowance: 14, adj: 0 }, unpaid: { allowance: 0, adj: 0 },
         },
         reduced: { vacation: false, sick: false, maternity: false, paternity: false, unpaid: false },
@@ -168,47 +186,61 @@ function newLeave() {
     };
 }
 
+const num = (x) => { const n = parseFloat(String(x ?? '').replace(/,/g, '').replace(/[^0-9.\-]/g, '')); return Number.isNaN(n) ? 0 : n; };
+const truthy = (x) => x === true || /^(true|yes|y|да|1)$/i.test(String(x).trim());
+
 function newJob(p = {}) {
-    return {
+    const j = {
         id: uid(), title: p.title || '', employer: p.employer || '', category: p.category || '', type: p.type || 'standard',
-        mode: p.mode || 'onsite', schedule: p.schedule || '', state: p.state || 'working',
-        salary: { amount: Number(p.amount) || 0, currency: p.currency || '$', period: p.period || 'month', rateType: p.rateType || 'hour', totalEarned: 0 },
-        leave: newLeave(), tasks: [], awareness: { mode: 'everyone', who: [] },
+        mode: p.mode || 'onsite', schedule: p.schedule || '', state: p.state || 'working', insurance: truthy(p.insurance),
+        salary: { amount: num(p.amount), currency: p.currency || '$', period: p.period || 'month', rateType: p.rateType || 'hour', totalEarned: 0 },
+        leave: newLeave(p.vacationDays != null && p.vacationDays !== '' ? num(p.vacationDays) : 14), tasks: [], awareness: { mode: 'everyone', who: [] },
         commute: '', stress: 50, satisfaction: 50, coworkers: [], summary: '', description: p.description || '',
     };
+    return j;
+}
+
+function mkPerson(id, name, kind) {
+    return { id, name, kind, group: 'unknown', resume: { skills: '', seeking: '' }, jobs: [], history: [], phoneContact: '' };
 }
 
 function ensurePeople() {
-    const s = S();
     const ctx = getContext();
-    if (!D().people.user) D().people.user = { id: 'user', name: ctx.name1 || 'User', kind: 'user', age: '', jobs: [], history: [], phoneContact: '' };
-    D().people.user.name = ctx.name1 || D().people.user.name;
+    const P = D().people;
+    if (!P.user) P.user = mkPerson('user', ctx.name1 || 'User', 'user');
+    P.user.name = ctx.name1 || P.user.name;
     const ch = ctx.characters?.[ctx.characterId];
     if (ch) {
         const id = 'char:' + ch.avatar;
-        if (!D().people[id]) D().people[id] = { id, name: ch.name, kind: 'bot', age: '', jobs: [], history: [], phoneContact: '' };
-        D().people[id].name = ch.name;
+        if (!P[id]) P[id] = mkPerson(id, ch.name, 'bot');
+        P[id].name = ch.name;
         ui.botId = id;
     } else ui.botId = null;
-    if (!D().people[ui.selected]) ui.selected = 'user';
-    // upgrade older records
-    for (const p of Object.values(D().people)) for (const j of p.jobs) { if (!j.leave) j.leave = newLeave(); if (!j.awareness) j.awareness = { mode: 'everyone', who: [] }; }
+    if (!P[ui.selected]) ui.selected = 'user';
+    for (const p of Object.values(P)) {
+        if (!p.group) { const n = parseInt(p.age, 10); p.group = Number.isNaN(n) ? 'unknown' : n < 13 ? 'child' : n < 18 ? 'teen' : 'adult'; }
+        if (!p.resume) p.resume = { skills: '', seeking: '' };
+        for (const j of p.jobs) {
+            if (!j.leave) j.leave = newLeave();
+            if (!j.awareness) j.awareness = { mode: 'everyone', who: [] };
+            if (j.insurance === undefined) j.insurance = false;
+            j.coworkers = (j.coworkers || []).filter((id) => P[id]);
+            for (const e of j.leave.entries) { if (e.active === undefined) e.active = !e.end && !e.planned; if (e.calId === undefined) e.calId = ''; }
+        }
+    }
 }
 
 function visiblePeople() {
-    const s = S();
     return Object.values(D().people).filter((p) => p.kind === 'user' || p.kind === 'npc' || p.id === ui.botId);
 }
-const jobVisible = (j) => S().adult || j.type !== 'adult';
 const isOnLeave = (j) => ['onleave', 'vacation', 'sick', 'maternity', 'paternity'].includes(j.state);
 
-function ageClass(p) {
-    const n = parseInt(p.age, 10);
-    if (Number.isNaN(n)) return 'unknown';
-    return n < 18 ? 'minor' : 'adult';
-}
-function canTeen(p) { const n = parseInt(p.age, 10); return Number.isNaN(n) || (n >= 13 && n <= 17); }
-function canAdult(p) { return S().adult && ageClass(p) !== 'minor'; }
+// Age group rules
+const minor = (p) => p.group === 'child' || p.group === 'teen';
+const canTeen = (p) => p.group === 'unknown' || p.group === 'teen';
+const canAdult = (p) => S().adult && !minor(p);
+const canWork = (p) => p.group !== 'child';
+const jobVisibleFor = (p, j) => (S().adult || j.type !== 'adult') && !(j.type === 'adult' && minor(p));
 
 /* ------------------------------------------------------------------ */
 /* Leave maths                                                         */
@@ -220,10 +252,9 @@ function entryDays(e) {
     }
     return Number(e.days) || 0;
 }
-function usedDays(j, type) {
-    const b = j.leave.balances[type];
-    return (Number(b.adj) || 0) + j.leave.entries.filter((e) => e.type === type).reduce((a, e) => a + entryDays(e), 0);
-}
+const entrySum = (j, type, planned) => j.leave.entries.filter((e) => e.type === type && !!e.planned === planned).reduce((a, e) => a + entryDays(e), 0);
+const usedDays = (j, type) => (Number(j.leave.balances[type].adj) || 0) + entrySum(j, type, false);
+const plannedDays = (j, type) => entrySum(j, type, true);
 const leftDays = (j, type) => (Number(j.leave.balances[type].allowance) || 0) - usedDays(j, type);
 
 function leaveFactor(j) {
@@ -245,75 +276,118 @@ function findKey(obj, re, depth = 3) {
     return null;
 }
 const SYMBOLS = { RUB: '₽', USD: '$', EUR: '€', GBP: '£', JPY: '¥', '₽': '₽', $: '$', '€': '€', '£': '£', '¥': '¥' };
+const BAL_STRICT = /^(bank)?(balance|money|funds)$/i;
+const BAL_LOOSE = /balance|money|funds|cash|wallet/i;
 
 const PhoneBridge = {
     api() {
         for (const k of ['PhoneST', 'phoneST', 'Phone_ST', 'STPhone', 'stPhone', 'phone_st']) if (window[k] && typeof window[k] === 'object') return window[k];
         return null;
     },
-    store() {
+    // Possible data stores: extension settings and chat metadata entries that look like Phone-ST
+    stores() {
+        const out = [];
         const es = extension_settings;
+        const md = getContext().chatMetadata || {};
         const key = S().phoneKey;
-        if (key && isObj(es[key])) return es[key];
-        for (const k of Object.keys(es)) if (k !== MODULE && /phone/i.test(k) && isObj(es[k])) return es[k];
-        return null;
+        if (key) { if (isObj(es[key])) out.push(es[key]); if (isObj(md[key])) out.push(md[key]); }
+        for (const k of Object.keys(es)) if (k !== MODULE && k !== key && /phone/i.test(k) && isObj(es[k])) out.push(es[k]);
+        for (const k of Object.keys(md)) if (k !== MODULE && k !== key && /phone/i.test(k) && isObj(md[k])) out.push(md[k]);
+        return out;
     },
-    installed() { return !!(this.api() || this.store()); },
+    installed() { return !!(this.api() || this.stores().length); },
     async call(names, ...args) {
         const api = this.api();
         if (!api) return undefined;
-        for (const scope of [api, api.bank].filter(Boolean)) {
+        for (const scope of [api, api.bank, api.calendar].filter(Boolean)) {
             for (const n of names) if (typeof scope[n] === 'function') { try { return await scope[n](...args); } catch (e) { console.warn('[Jobs] phone call failed', n, e); } }
         }
         return undefined;
     },
+    findBalance() {
+        for (const re of [BAL_STRICT, BAL_LOOSE]) for (const st of this.stores()) { const h = findKey(st, re); if (h) return h; }
+        return null;
+    },
     async getBalance() {
         const v = await this.call(['getBalance', 'getBankBalance', 'balance']);
         if (typeof v === 'number') return v;
-        const st = this.store();
-        const hit = st && findKey(st, /^(bank)?(balance|money|funds)$/i);
-        return hit ? hit.owner[hit.key] : null;
+        const h = this.findBalance();
+        return h ? h.owner[h.key] : null;
     },
     async getCurrency() {
         let v = await this.call(['getCurrency', 'currency']);
-        if (!v) { const st = this.store(); v = st?.bank?.currency ?? st?.currency ?? st?.settings?.currency; }
+        if (!v) for (const st of this.stores()) { v = st?.bank?.currency ?? st?.currency ?? st?.settings?.currency; if (v) break; }
         return v ? (SYMBOLS[String(v).toUpperCase()] || SYMBOLS[v] || String(v)) : null;
     },
     async addMoney(amount, reason) {
         window.dispatchEvent(new CustomEvent('jobsext:bank-credit', { detail: { amount, reason } }));
         const r = await this.call(['addMoney', 'addBalance', 'deposit', 'creditBank', 'bankDeposit', 'changeBalance'], amount, reason);
         if (r !== undefined) return r !== false;
-        const st = this.store();
-        const hit = st && findKey(st, /^(bank)?(balance|money|funds)$/i);
-        if (hit) { hit.owner[hit.key] = Math.round((hit.owner[hit.key] + amount) * 100) / 100; save(); return true; }
+        const h = this.findBalance();
+        if (h) { h.owner[h.key] = Math.round((h.owner[h.key] + amount) * 100) / 100; save(); return true; }
         return false;
     },
     async getContacts() {
         let v = await this.call(['getContacts', 'contacts']);
-        if (!v) v = this.store()?.contacts;
+        if (!v) for (const st of this.stores()) { v = st?.contacts; if (v) break; }
         if (Array.isArray(v)) return v.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean);
         if (isObj(v)) return Object.values(v).map((c) => c?.name).filter(Boolean);
         return [];
     },
     async getMessages(limit = 30) {
         let v = await this.call(['getMessages', 'messages']);
-        if (!v) v = this.store()?.messages;
+        if (!v) for (const st of this.stores()) { v = st?.messages; if (v) break; }
         const out = [];
         const walk = (x) => { if (Array.isArray(x)) x.forEach(walk); else if (isObj(x)) { if (typeof x.text === 'string') out.push(x.text); else if (typeof x.mes === 'string') out.push(x.mes); else Object.values(x).forEach(walk); } };
         walk(v);
         return out.slice(-limit);
     },
-    async getStatus() {
-        const v = await this.call(['getStatus', 'status']);
-        if (typeof v === 'string') return v;
-        const s = this.store()?.status;
-        return typeof s === 'string' ? s : null;
-    },
     async notify(title, text) {
         const r = await this.call(['notify', 'addNotification', 'pushNotification', 'sendNotification'], title, text);
         return r !== undefined;
     },
+    // Calendar: only used through Phone-ST's own functions (never writes into its data blindly)
+    async addCalendarEvent(ev) {
+        window.dispatchEvent(new CustomEvent('jobsext:calendar-add', { detail: ev }));
+        const r = await this.call(['addCalendarEvent', 'addEvent', 'createEvent', 'addCalendarEntry'], ev);
+        if (r === undefined || r === false || r === null) return null;
+        return r?.id ?? (r === true ? 'linked' : String(r));
+    },
+    async removeCalendarEvent(id) {
+        window.dispatchEvent(new CustomEvent('jobsext:calendar-remove', { detail: { id } }));
+        await this.call(['removeCalendarEvent', 'deleteCalendarEvent', 'removeEvent', 'deleteEvent'], id);
+    },
 };
+
+// Compact view of how Phone-ST stores data (types only, no private text) to help wire the bridge
+function shape(o, depth = 3) {
+    if (Array.isArray(o)) return `[${o.length} items${o.length && depth > 0 ? ': ' + JSON.stringify(shape(o[0], depth - 1)) : ''}]`;
+    if (isObj(o)) {
+        if (depth <= 0) return `{${Object.keys(o).slice(0, 12).join(', ')}}`;
+        const r = {};
+        for (const k of Object.keys(o).slice(0, 25)) r[k] = shape(o[k], depth - 1);
+        return r;
+    }
+    if (typeof o === 'number' || typeof o === 'boolean') return o;
+    if (typeof o === 'string') return o.length <= 3 ? o : `str(${o.length})`;
+    return typeof o;
+}
+
+function diagnose() {
+    const md = getContext().chatMetadata || {};
+    const lines = [];
+    lines.push('Jobs & Career diagnostics');
+    lines.push('window globals: ' + (Object.keys(window).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
+    const api = PhoneBridge.api();
+    lines.push('bridge api object: ' + (api ? Object.keys(api).join(', ') : '(none)'));
+    lines.push('extension_settings keys: ' + (Object.keys(extension_settings).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
+    lines.push('chat metadata keys: ' + (Object.keys(md).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
+    lines.push('localStorage keys: ' + (Object.keys(localStorage).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
+    const h = PhoneBridge.findBalance();
+    lines.push('balance found: ' + (h ? `${h.key} = ${h.owner[h.key]}` : 'no'));
+    PhoneBridge.stores().forEach((st, i) => lines.push(`store ${i} shape: ` + JSON.stringify(shape(st, 3))));
+    return lines.join('\n');
+}
 
 async function refreshBank() {
     if (!S().enabled) return;
@@ -322,6 +396,7 @@ async function refreshBank() {
     try { bank.balance = await PhoneBridge.getBalance(); bank.currency = await PhoneBridge.getCurrency(); } catch (e) { console.warn('[Jobs] bank refresh', e); }
 }
 const effCur = (p, j) => (p.kind === 'user' && bank.currency ? bank.currency : j.salary.currency);
+const worldCur = () => bank.currency || '$';
 
 /* ------------------------------------------------------------------ */
 /* Payments                                                            */
@@ -356,12 +431,12 @@ async function llm(prompt, sys) {
         try {
             const svc = ctx.ConnectionManagerRequestService;
             if (!svc) break;
-            const r = await svc.sendRequest(id, [{ role: 'system', content: sys }, { role: 'user', content: prompt }], 1200);
+            const r = await svc.sendRequest(id, [{ role: 'system', content: sys }, { role: 'user', content: prompt }], 1400);
             const txt = typeof r === 'string' ? r : (r?.content ?? '');
             if (txt) return txt;
         } catch (e) { console.warn('[Jobs] profile failed', id, e); }
     }
-    try { if (typeof ctx.generateRaw === 'function') { const r = await ctx.generateRaw({ prompt, systemPrompt: sys, responseLength: 1200 }); if (r) return r; } } catch (e) { console.warn(e); }
+    try { if (typeof ctx.generateRaw === 'function') { const r = await ctx.generateRaw({ prompt, systemPrompt: sys, responseLength: 1400 }); if (r) return r; } } catch (e) { console.warn(e); }
     try { const r = await ST.generateQuietPrompt({ quietPrompt: `${sys}\n\n${prompt}`, skipWIAN: true }); if (r) return r; } catch (e) { console.warn(e); }
     throw new Error('No API available');
 }
@@ -392,12 +467,21 @@ const KIND_HINT = {
     adult: 'mature adult-industry occupations for adults (nightlife, entertainment, modeling, companionship services, etc.); list job metadata only, keep descriptions non-graphic',
 };
 
+const JOB_JSON_SPEC = 'title, employer, category, mode (onsite|remote|hybrid|anywhere), schedule, amount (a plain number greater than 0, never text), period (hour|day|week|month|year|project), vacation_days (integer paid vacation days per year), insurance (true or false), description';
+
+function resumeText(p) {
+    const r = p.resume || {};
+    if (!r.skills && !r.seeking) return '';
+    return `Resume of ${p.name}:\nSkills/abilities: ${r.skills || '-'}\nLooking for: ${r.seeking || '-'}\n`;
+}
+
 async function searchIdeas(kind) {
     const p = D().people[ui.selected];
-    const sys = 'You generate job ideas for a roleplay character. Reply with ONLY a JSON array, no commentary.';
-    const prompt = `Character: ${p.name}. Age: ${p.age || 'unknown'}.\nContext:\n${cardText()}\n\nSuggest 4 ${KIND_HINT[kind]} fitting this character.\nJSON array of objects with keys: title, employer, category, mode (onsite|remote|hybrid|anywhere), schedule, amount (number), period (hour|day|week|month|year|project), description.\nWrite text values in ${outLang()}.`;
+    const cur = worldCur();
+    const sys = 'You generate realistic job offers for a roleplay character. Reply with ONLY a JSON array, no commentary.';
+    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${resumeText(p)}Context:\n${cardText()}\n\nSuggest 4 ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
     const arr = parseJsonArray(await llm(prompt, sys));
-    return arr.map((x) => ({ ...x, type: kind === 'parttime' ? 'parttime' : kind }));
+    return arr.map((x) => ({ ...x, amount: num(x.amount), vacation_days: num(x.vacation_days), insurance: truthy(x.insurance), type: kind }));
 }
 
 async function scanJobs() {
@@ -405,8 +489,8 @@ async function scanJobs() {
     const names = visiblePeople().map((x) => x.name).join(', ');
     const phone = bank.installed ? (await PhoneBridge.getMessages(15)).join('\n') : '';
     const sys = 'You extract jobs mentioned in roleplay text. Reply with ONLY a JSON array, no commentary.';
-    const prompt = `Known people: ${names}.\nCharacter card:\n${cardText()}\n\nRecent chat:\n${chatText()}\n\n${phone ? 'Phone messages:\n' + phone + '\n\n' : ''}Find jobs/occupations that any known person currently has. JSON array of objects with keys: owner (a known person's name, default "${p.name}"), title, employer, category, mode, schedule, amount (number or 0), period, type (standard|parttime|teen|freelance${S().adult ? '|adult' : ''}). Write text values in ${outLang()}.`;
-    return parseJsonArray(await llm(prompt, sys));
+    const prompt = `Known people: ${names}.\nCharacter card:\n${cardText()}\n\nRecent chat:\n${chatText()}\n\n${phone ? 'Phone messages:\n' + phone + '\n\n' : ''}Find jobs/occupations that any known person currently has. JSON array of objects with keys: owner (a known person's name, default "${p.name}"), type (standard|parttime|teen|freelance${S().adult ? '|adult' : ''}), ${JOB_JSON_SPEC}. Use 0 or false when unknown. Write text values in ${outLang()}.`;
+    return parseJsonArray(await llm(prompt, sys)).map((x) => ({ ...x, amount: num(x.amount), vacation_days: x.vacation_days, insurance: truthy(x.insurance) }));
 }
 
 /* ------------------------------------------------------------------ */
@@ -421,35 +505,44 @@ function knownBy(owner, j) {
 function buildPrompt() {
     const s = S();
     if (!s.enabled || !s.inject || !hasChat()) return '';
+    const P = D().people;
     const lines = [];
+    const resumes = [];
     for (const p of visiblePeople()) {
-        for (const j of p.jobs.filter(jobVisible)) {
+        const r = p.resume;
+        if (r && (r.skills || r.seeking) && canWork(p)) resumes.push(`- ${p.name} — skills: ${String(r.skills || '-').slice(0, 400)}; looking for: ${String(r.seeking || '-').slice(0, 300)}`);
+        for (const j of p.jobs.filter((x) => jobVisibleFor(p, x))) {
             let l = `- ${p.name}: ${j.title}${j.employer ? ' at ' + j.employer : ''} [${j.category || j.type}; ${t('st_' + j.state)}; ${j.mode}`;
             if (j.schedule) l += `; schedule: ${j.schedule}`;
             if (j.salary.amount) l += `; pay: ${fmt(j.salary.amount, effCur(p, j))}/${j.type === 'freelance' ? j.salary.rateType : j.salary.period}`;
-            l += `]. Known by: ${knownBy(p, j)}.`;
+            l += `; vacation ${j.leave.balances.vacation.allowance} days/yr; insurance: ${j.insurance ? 'yes' : 'no'}]. Known by: ${knownBy(p, j)}.`;
+            const cw = j.coworkers.map((id) => P[id]?.name).filter(Boolean);
+            if (cw.length) l += ` Coworkers: ${cw.join(', ')}.`;
             if (isOnLeave(j)) {
                 l += ` On ${t('st_' + j.state).toLowerCase()} now: no work tasks; may mention it.`;
-                const ch = j.leave.entries.find((e) => !e.end && e.childId);
-                const child = ch && D().people[ch.childId];
+                const act = j.leave.entries.find((e) => e.active);
+                const child = act?.childId && P[act.childId];
                 if (child) l += ` Parental leave for child ${child.name}.`;
-                const rs = j.leave.entries.find((e) => !e.end && e.reason);
-                if (rs && j.state === 'sick') l += ` Reason: ${rs.reason}.`;
+                if (act?.reason && j.state === 'sick') l += ` Reason: ${act.reason}.`;
             } else {
                 const open = j.tasks.filter((x) => x.status === 'pending' || x.status === 'active');
                 if (open.length) l += ` Tasks: ${open.map((x) => x.desc + (x.due ? ` (due ${x.due})` : '') + (x.pay ? ` [pay ${x.pay}]` : '')).join('; ')}.`;
             }
+            const plan = j.leave.entries.filter((e) => e.planned);
+            if (plan.length) l += ` Planned time off: ${plan.map((e) => `${t('l_' + e.type).toLowerCase()} ${e.start || '?'}–${e.end || '?'}`).join('; ')}.`;
             if (s.opt.sliders) l += ` Stress ${j.stress}/100, satisfaction ${j.satisfaction}/100.`;
             if (s.opt.commute && j.commute) l += ` Commute: ${j.commute}.`;
             if (s.opt.autosummary && j.summary) l += ` Recent work events: ${j.summary}`;
             lines.push(l);
         }
     }
-    if (!lines.length && !(s.bankInChat && bank.installed)) return '';
-    let out = `[Jobs & career info (reference). A job may only be mentioned by or to characters who know about it (see "Known by"). Characters on leave get no work tasks. Write job-related text in the chat's language.]\n${lines.join('\n')}`;
-    if (s.bankInChat && bank.installed && bank.balance != null) {
-        const u = D().people.user;
-        out += `\n${u.name}'s phone bank balance: ${fmt(bank.balance, bank.currency || '')}${bank.balance < 0 ? ' (negative, in debt)' : ''}.`;
+    const showBank = s.bankInChat && bank.installed && bank.balance != null;
+    if (!lines.length && !resumes.length && !showBank) return '';
+    let out = `[Jobs & career info (reference). A job may only be mentioned by or to characters who know about it (see "Known by"). Characters on leave get no work tasks. Write job-related text in the chat's language.]`;
+    if (resumes.length) out += `\nResumes:\n${resumes.join('\n')}`;
+    if (lines.length) out += `\nJobs:\n${lines.join('\n')}`;
+    if (showBank) {
+        out += `\n${P.user.name}'s phone bank balance: ${fmt(bank.balance, bank.currency || '')}${bank.balance < 0 ? ' (negative, in debt)' : ''}.`;
     }
     return out;
 }
@@ -465,7 +558,7 @@ function applyPrompt() {
 /* ------------------------------------------------------------------ */
 /* UI state & rendering                                                */
 /* ------------------------------------------------------------------ */
-const ui = { open: false, selected: 'user', botId: null, exp: {}, ideas: [], busy: '', ideaFor: null };
+const ui = { open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
 
 function opacity() { const v = parseFloat(localStorage.getItem(LS_OPACITY)); return Number.isNaN(v) ? 1 : v; }
 
@@ -478,104 +571,141 @@ function fld(j, path, label, kind = 'text', o = {}) {
     if (kind === 'select') ctl = `<select ${base}>${o.html}</select>`;
     else if (kind === 'check') ctl = `<input type="checkbox" ${base} data-c="1" ${val ? 'checked' : ''}>`;
     else if (kind === 'num') ctl = `<input type="number" step="any" ${base} data-n="1" value="${esc(val)}">`;
-    else if (kind === 'range') ctl = `<input type="range" min="0" max="100" ${base} data-n="1" value="${esc(val)}"><span>${esc(val)}</span>`;
+    else if (kind === 'range') ctl = `<input type="range" min="0" max="100" ${base} data-n="1" value="${esc(val)}"><b>${esc(val)}</b>`;
     else if (kind === 'area') ctl = `<textarea rows="2" ${base}>${esc(val)}</textarea>`;
     else if (kind === 'date') ctl = `<input type="date" ${base} value="${esc(val)}">`;
     else ctl = `<input type="text" ${base} value="${esc(val)}">`;
     return `<label class="jx-f ${kind === 'check' ? 'jx-fc' : ''}"><span>${esc(label)}</span>${ctl}</label>`;
 }
 
+const chip = (txt, cls = '') => `<span class="jx-chip ${cls}">${txt}</span>`;
+
 function salaryLine(p, j) {
     if (!j.salary.amount) return '';
     return `${fmt(j.salary.amount, effCur(p, j))}/${t(j.type === 'freelance' ? 'r_' + j.salary.rateType : 'p_' + j.salary.period)}`;
 }
 
+function sec(j, name, icon, title, html, badge = '') {
+    const key = `${j.id}:${name}`;
+    const open = ui.sec[key] ?? (name === 'pay');
+    return `<div class="jx-sec"><div class="jx-sh" data-a="sec" data-j="${j.id}" data-sec="${name}"><span>${icon} ${esc(title)}</span><span class="jx-sbadge">${badge}</span><span class="jx-chev">${open ? '▾' : '▸'}</span></div>${open ? `<div class="jx-sb">${html}</div>` : ''}</div>`;
+}
+
 function renderLeave(j) {
     const L = j.leave;
-    let h = `<div class="jx-sec"><div class="jx-st">${t('tracker')}</div>${fld(j, 'leave.enabled', t('enabled'), 'check')}`;
-    if (!L.enabled) return h + '</div>';
-    h += '<table class="jx-tbl"><tr><th></th><th>' + t('allowance') + '</th><th>' + t('adjust') + '</th><th>' + t('used') + '</th><th>' + t('left') + '</th><th>' + t('reduced') + '</th></tr>';
+    let h = fld(j, 'leave.enabled', t('enabled'), 'check');
+    if (!L.enabled) return h;
+    h += `<div class="jx-scroll"><table class="jx-tbl"><tr><th></th><th>${t('allowance')}</th><th>±</th><th>${t('used')}</th><th>${t('planned')}</th><th>${t('left')}</th><th>${t('reduced')}</th></tr>`;
     for (const ty of LEAVE_TYPES) {
         const left = leftDays(j, ty);
         h += `<tr><td>${t('l_' + ty)}</td>
         <td><input type="number" data-j="${j.id}" data-f="leave.balances.${ty}.allowance" data-n="1" value="${L.balances[ty].allowance}"></td>
         <td><input type="number" data-j="${j.id}" data-f="leave.balances.${ty}.adj" data-n="1" value="${L.balances[ty].adj}"></td>
-        <td>${usedDays(j, ty)}</td><td class="${left < 0 ? 'jx-neg' : ''}">${left}</td>
+        <td>${usedDays(j, ty)}</td><td>${plannedDays(j, ty)}</td><td class="${left < 0 ? 'jx-neg' : ''}"><b>${left}</b></td>
         <td><input type="checkbox" data-j="${j.id}" data-f="leave.reduced.${ty}" data-c="1" ${L.reduced[ty] ? 'checked' : ''}></td></tr>`;
     }
-    h += '</table>';
-    const children = Object.values(D().people).filter((p) => p.kind === 'npc');
-    h += `<div class="jx-lf"><select class="jx-l-type">${LEAVE_TYPES.map((x) => `<option value="${x}">${esc(t('l_' + x))}</option>`).join('')}</select>
+    h += '</table></div>';
+    const kids = Object.values(D().people).filter((p) => p.kind === 'npc');
+    h += `<div class="jx-st">${t('planVacation')}</div><div class="jx-lf">
+      <select class="jx-l-type">${LEAVE_TYPES.map((x) => `<option value="${x}">${esc(t('l_' + x))}</option>`).join('')}</select>
       <input type="date" class="jx-l-start" value="${today()}" title="${t('start')}"><input type="date" class="jx-l-end" title="${t('end')}">
-      <input type="number" class="jx-l-days" placeholder="${t('days')}" style="width:60px">
+      <input type="number" class="jx-l-days" placeholder="${t('days')}" title="${t('days')}" style="width:64px">
       <input type="text" class="jx-l-reason" placeholder="${t('reason')}">
-      <select class="jx-l-child"><option value="">${t('child')}: —</option>${children.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
-      <button class="menu_button" data-a="startLeave" data-j="${j.id}">${t('startLeave')}</button></div>`;
+      <select class="jx-l-child"><option value="">${t('child')}: —</option>${kids.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+      ${bank.installed ? `<label class="jx-fc"><input type="checkbox" class="jx-l-cal" checked> 📅 ${t('calendar')}</label>` : ''}
+      <button class="menu_button" data-a="planLeave" data-j="${j.id}">${t('plan')}</button>
+      <button class="menu_button" data-a="startLeave" data-j="${j.id}">${t('startNow')}</button></div>`;
     if (L.entries.length) {
         h += `<div class="jx-st">${t('entries')}</div>`;
-        h += L.entries.map((e, i) => `<div class="jx-row">${esc(t('l_' + e.type))}: ${esc(e.start || '?')} → ${esc(e.end || '…')} (${entryDays(e)} ${t('days')})${e.reason ? ' · ' + esc(e.reason) : ''}${e.childId && D().people[e.childId] ? ' · ' + esc(D().people[e.childId].name) : ''}
-          ${!e.end ? `<button class="menu_button" data-a="endLeave" data-j="${j.id}" data-i="${i}">${t('endLeave')}</button>` : ''}
-          <button class="menu_button" data-a="delLeave" data-j="${j.id}" data-i="${i}">✕</button></div>`).join('');
+        h += L.entries.map((e, i) => `<div class="jx-entry ${e.planned ? 'jx-planned' : e.active ? 'jx-active' : ''}">
+          <div><b>${esc(t('l_' + e.type))}</b> · ${esc(e.start || '?')} → ${esc(e.end || '…')} · ${entryDays(e)} ${t('days')}
+          ${e.planned ? chip(t('planned'), 'jx-c-warn') : e.active ? chip('●', 'jx-c-ok') : ''}${e.calId ? chip('📅') : ''}
+          ${e.reason ? `<div class="jx-dim">${esc(e.reason)}${e.childId && D().people[e.childId] ? ' · ' + esc(D().people[e.childId].name) : ''}</div>` : ''}</div>
+          <div class="jx-ebtn">${e.planned ? `<button class="menu_button" data-a="startEntry" data-j="${j.id}" data-i="${i}">${t('startEntry')}</button>` : ''}
+          ${e.active ? `<button class="menu_button" data-a="endLeave" data-j="${j.id}" data-i="${i}">⏹ ${t('endLeave')}</button>` : ''}
+          ${bank.installed && !e.calId ? `<button class="menu_button" data-a="calEntry" data-j="${j.id}" data-i="${i}" title="${t('calendar')}">📅</button>` : ''}
+          <button class="menu_button" data-a="delLeave" data-j="${j.id}" data-i="${i}">✕</button></div></div>`).join('');
     }
-    return h + '</div>';
+    return h;
 }
 
-function renderTasks(p, j) {
-    let h = `<div class="jx-sec"><div class="jx-st">${t('tasks')} <button class="menu_button" data-a="addTask" data-j="${j.id}">${t('addTask')}</button></div>`;
+function renderTasks(j) {
+    let h = `<button class="menu_button" data-a="addTask" data-j="${j.id}">${t('addTask')}</button>`;
     if (isOnLeave(j)) h += `<div class="jx-warn">${t('noLeaveTasks')}</div>`;
     j.tasks.forEach((k, i) => {
         h += `<div class="jx-task"><input type="text" data-j="${j.id}" data-f="tasks.${i}.desc" value="${esc(k.desc)}" placeholder="${t('desc')}">
         <input type="date" data-j="${j.id}" data-f="tasks.${i}.due" value="${esc(k.due)}" title="${t('due')}">
         <input type="number" step="any" data-j="${j.id}" data-f="tasks.${i}.pay" data-n="1" value="${esc(k.pay)}" title="${t('pay')}" style="width:80px">
         <select data-j="${j.id}" data-f="tasks.${i}.status">${opts(TASK_STATUS, k.status, 'ts_')}</select>
-        ${k.paid ? `<span class="jx-ok">${t('paid')}</span>` : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">✕</button></div>`;
+        ${k.paid ? chip(t('paid'), 'jx-c-ok') : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">✕</button></div>`;
     });
-    return h + '</div>';
+    return h;
 }
 
 function renderAwareness(p, j) {
     const others = visiblePeople().filter((x) => x.id !== p.id);
-    let h = `<div class="jx-sec"><div class="jx-st">${t('awareness')}</div>
-      <select data-j="${j.id}" data-f="awareness.mode"><option value="everyone" ${j.awareness.mode === 'everyone' ? 'selected' : ''}>${t('everyone')}</option>
+    let h = `<select data-j="${j.id}" data-f="awareness.mode"><option value="everyone" ${j.awareness.mode === 'everyone' ? 'selected' : ''}>${t('everyone')}</option>
       <option value="specific" ${j.awareness.mode === 'specific' ? 'selected' : ''}>${t('specific')}</option>
       <option value="none" ${j.awareness.mode === 'none' ? 'selected' : ''}>${t('none')}</option></select>`;
     if (j.awareness.mode === 'specific') {
-        h += others.map((o) => `<label class="jx-fc"><input type="checkbox" data-a="aware" data-j="${j.id}" data-name="${esc(o.name)}" ${j.awareness.who.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}</label>`).join('');
+        h += '<div class="jx-pills">' + others.map((o) => `<label class="jx-pill"><input type="checkbox" data-a="aware" data-j="${j.id}" data-name="${esc(o.name)}" ${j.awareness.who.includes(o.name) ? 'checked' : ''}> ${esc(o.name)}</label>`).join('') + '</div>';
     }
-    return h + '</div>';
+    return h;
+}
+
+const kindIcon = (p) => (p.kind === 'user' ? '👤' : p.kind === 'bot' ? '🤖' : '🧑');
+
+function renderCoworkers(p, j) {
+    const others = visiblePeople().filter((x) => x.id !== p.id);
+    return `<div class="jx-pills">${others.map((o) => `<label class="jx-pill"><input type="checkbox" data-a="cow" data-j="${j.id}" data-id="${esc(o.id)}" ${j.coworkers.includes(o.id) ? 'checked' : ''}> ${kindIcon(o)} ${esc(o.name)}</label>`).join('')}</div>
+      <div class="jx-row"><input type="text" class="jx-cw" placeholder="${t('coworkerNew')}"><button class="menu_button" data-a="addCoworker" data-j="${j.id}">+ NPC</button></div>`;
 }
 
 function renderJob(p, j) {
     const s = S();
     const open = ui.exp[j.id];
     const types = JOB_TYPES.filter((x) => x !== 'adult' || canAdult(p) || j.type === 'adult').filter((x) => x !== 'teen' || canTeen(p) || j.type === 'teen');
-    let h = `<div class="jx-job" data-job="${j.id}"><div class="jx-jh" data-a="toggle" data-j="${j.id}"><b>${esc(j.title || '—')}</b>
-      <span class="jx-badge jx-s-${j.state}">${t('st_' + j.state)}</span>${j.category ? `<span class="jx-tag">${esc(j.category)}</span>` : ''}${j.type === 'adult' ? '<span class="jx-tag">18+</span>' : ''}
-      <span class="jx-sal">${esc(salaryLine(p, j))}</span></div>`;
-    if (isOnLeave(j) && !open) h += `<div class="jx-sub">${t('st_' + j.state)} · ${t('left')}: ${leftDays(j, STATE_LEAVE[j.state])} ${t('days')}</div>`;
+    const vac = j.leave.balances.vacation.allowance;
+    let h = `<div class="jx-job jx-s-${j.state}" data-job="${j.id}"><div class="jx-jh" data-a="toggle" data-j="${j.id}">
+      <div class="jx-jt"><div class="jx-name">${esc(j.title || '—')}</div><div class="jx-emp">${esc(j.employer || '')}${j.category ? ' · ' + esc(j.category) : ''}</div></div>
+      <div class="jx-chips">${j.salary.amount ? chip('💰 ' + esc(salaryLine(p, j)), 'jx-c-pay') : chip(t('setSalary'), 'jx-c-warn')}
+      ${chip('🏖 ' + vac)}${j.insurance ? chip('🛡') : ''}${j.type === 'adult' ? chip('18+') : ''}${chip(t('st_' + j.state), 'jx-badge jx-b-' + j.state)}</div></div>`;
+    if (isOnLeave(j) && !open) h += `<div class="jx-subline">${t('st_' + j.state)} · ${t('left')}: ${leftDays(j, STATE_LEAVE[j.state])} ${t('days')}</div>`;
     if (open) {
-        h += '<div class="jx-body">';
-        h += `<div class="jx-grid">${fld(j, 'title', t('jTitle'))}${fld(j, 'employer', t('employer'))}${fld(j, 'category', t('category'))}
-          ${fld(j, 'type', t('type'), 'select', { html: opts(types, j.type, 't_') })}
-          ${fld(j, 'mode', t('mode'), 'select', { html: opts(MODES, j.mode, 'm_') })}
-          ${fld(j, 'state', t('state'), 'select', { html: opts(STATES, j.state, 'st_') })}</div>${fld(j, 'schedule', t('schedule'), 'area')}`;
-        h += `<div class="jx-sec"><div class="jx-st">${t('salary')}</div><div class="jx-grid">${fld(j, 'salary.amount', t('amount'), 'num')}
+        const paySec = `<div class="jx-grid">${fld(j, 'salary.amount', t('amount'), 'num')}
           ${p.kind === 'user' && bank.currency ? `<label class="jx-f"><span>${t('currency')}</span><input disabled value="${esc(bank.currency)}"></label>`
             : fld(j, 'salary.currency', t('currency'), 'select', { html: CURRENCIES.map((c) => `<option ${c === j.salary.currency ? 'selected' : ''}>${c}</option>`).join('') })}
           ${j.type === 'freelance' ? fld(j, 'salary.rateType', t('rateType'), 'select', { html: opts(RATES, j.salary.rateType, 'r_') }) : fld(j, 'salary.period', t('period'), 'select', { html: opts(PERIODS, j.salary.period, 'p_') })}
-          ${fld(j, 'salary.totalEarned', t('totalEarned'), 'num')}</div>
-          <button class="menu_button" data-a="payPeriod" data-j="${j.id}">${t('payPeriod')}</button></div>`;
-        h += renderLeave(j) + renderTasks(p, j) + renderAwareness(p, j);
-        if (s.opt.commute) h += fld(j, 'commute', t('commute'));
-        if (s.opt.sliders) h += fld(j, 'stress', t('stress'), 'range') + fld(j, 'satisfaction', t('satisfaction'), 'range');
-        if (s.opt.coworkers) {
-            h += `<div class="jx-sec"><div class="jx-st">${t('coworkers')}</div>${j.coworkers.map((c) => `<span class="jx-tag">${esc(c)}</span>`).join('')}
-              <div class="jx-row"><input type="text" class="jx-cw" placeholder="${t('npcName')}"><button class="menu_button" data-a="addCoworker" data-j="${j.id}">${t('addCoworker')}</button></div></div>`;
-        }
-        if (s.opt.autosummary) h += `<div class="jx-sec">${fld(j, 'summary', t('summary'), 'area')}<button class="menu_button" data-a="summarize" data-j="${j.id}">${t('summarize')}</button></div>`;
-        h += `<div class="jx-row">${s.opt.history ? `<button class="menu_button" data-a="archiveJob" data-j="${j.id}">${t('archive')}</button>` : ''}<button class="menu_button" data-a="delJob" data-j="${j.id}">${t('del')}</button></div></div>`;
+          ${fld(j, 'salary.totalEarned', t('totalEarned'), 'num')}
+          ${fld(j, 'leave.balances.vacation.allowance', t('vacationDays'), 'num')}
+          ${fld(j, 'insurance', t('insurance'), 'check')}</div>
+          <button class="menu_button" data-a="payPeriod" data-j="${j.id}">💵 ${t('payPeriod')}</button>`;
+        h += `<div class="jx-body"><div class="jx-grid">${fld(j, 'title', t('jTitle'))}${fld(j, 'employer', t('employer'))}${fld(j, 'category', t('category'))}
+          ${fld(j, 'type', t('type'), 'select', { html: opts(types, j.type, 't_') })}
+          ${fld(j, 'mode', t('mode'), 'select', { html: opts(MODES, j.mode, 'm_') })}
+          ${fld(j, 'state', t('state'), 'select', { html: opts(STATES, j.state, 'st_') })}</div>${fld(j, 'schedule', t('schedule'), 'area')}`;
+        h += sec(j, 'pay', '💰', t('sec_pay'), paySec);
+        h += sec(j, 'leave', '🏖', t('sec_leave'), renderLeave(j), j.leave.entries.some((e) => e.planned) ? '📅' : '');
+        h += sec(j, 'tasks', '📋', t('sec_tasks'), renderTasks(j), j.tasks.length ? String(j.tasks.length) : '');
+        h += sec(j, 'aware', '👁', t('sec_aware'), renderAwareness(p, j));
+        if (s.opt.coworkers) h += sec(j, 'cow', '🤝', t('coworkers'), renderCoworkers(p, j), j.coworkers.length ? String(j.coworkers.length) : '');
+        let more = '';
+        if (s.opt.commute) more += fld(j, 'commute', t('commute'));
+        if (s.opt.sliders) more += fld(j, 'stress', t('stress'), 'range') + fld(j, 'satisfaction', t('satisfaction'), 'range');
+        if (s.opt.autosummary) more += fld(j, 'summary', t('summary'), 'area') + `<button class="menu_button" data-a="summarize" data-j="${j.id}">${t('summarize')}</button>`;
+        if (more) h += sec(j, 'more', '✨', t('sec_more'), more);
+        h += `<div class="jx-row jx-end">${s.opt.history ? `<button class="menu_button" data-a="archiveJob" data-j="${j.id}">📦 ${t('archive')}</button>` : ''}<button class="menu_button" data-a="delJob" data-j="${j.id}">🗑 ${t('del')}</button></div></div>`;
     }
     return h + '</div>';
+}
+
+function ideaCard(x, i) {
+    const cur = worldCur();
+    return `<div class="jx-idea"><div class="jx-it"><b>${esc(x.title)}</b><span class="jx-dim"> ${esc(x.employer || '')}</span></div>
+      <div class="jx-chips">${x.amount ? chip('💰 ' + esc(fmt(x.amount, cur)) + '/' + esc(t('p_' + x.period) || x.period || ''), 'jx-c-pay') : chip(t('setSalary'), 'jx-c-warn')}
+      ${x.vacation_days !== '' && x.vacation_days != null ? chip('🏖 ' + esc(num(x.vacation_days)) + ' ' + t('days')) : ''}
+      ${chip('🛡 ' + (x.insurance ? t('yes') : t('no')), x.insurance ? 'jx-c-ok' : '')}${x.schedule ? chip('🕒 ' + esc(x.schedule)) : ''}${x.mode ? chip(esc(t('m_' + x.mode) || x.mode)) : ''}</div>
+      ${x.description ? `<div class="jx-dim">${esc(x.description)}</div>` : ''}<button class="menu_button" data-a="addIdea" data-i="${i}">＋ ${t('add')}</button></div>`;
 }
 
 function updatePower() {
@@ -585,42 +715,62 @@ function updatePower() {
     const b = document.getElementById('jx_power');
     if (b) { b.title = t('powerTip'); b.classList.toggle('jx-on', on); }
 }
+function updateFab() {
+    const fab = document.getElementById('jx_fab');
+    if (fab) fab.style.display = S().showFab ? '' : 'none';
+}
 
 function renderPanel() {
     const body = document.getElementById('jx_body');
     if (!body) return;
-    updatePower();
-    if (!S().enabled) { body.innerHTML = `<div class="jx-dim">${t('disabledMsg')}</div>`; return; }
-    if (!hasChat()) { body.innerHTML = `<div class="jx-dim">${t('noChat')}</div>`; return; }
+    updatePower(); updateFab();
+    if (!S().enabled) { body.innerHTML = `<div class="jx-empty">${t('disabledMsg')}</div>`; return; }
+    if (!hasChat()) { body.innerHTML = `<div class="jx-empty">${t('noChat')}</div>`; return; }
     ensurePeople();
     const s = S();
     const p = D().people[ui.selected];
     const scroll = body.scrollTop;
     let h = '';
     if (bank.installed) {
-        h += `<div class="jx-bank ${bank.balance < 0 ? 'jx-neg' : ''}">🏦 ${t('phoneBalance')}: <b>${bank.balance == null ? '—' : esc(fmt(bank.balance, bank.currency || ''))}</b>${bank.balance < 0 ? ` ⚠ ${t('negative')}` : ''}</div>`;
-    } else h += `<div class="jx-bank jx-dim">${t('phoneMissing')}</div>`;
-    h += '<div class="jx-people">' + visiblePeople().map((x) => `<button class="menu_button ${x.id === ui.selected ? 'jx-on' : ''}" data-a="select" data-id="${esc(x.id)}">${esc(x.name)}</button>`).join('')
-        + `<button class="menu_button" data-a="addNpc">${t('addNpc')}</button></div>`;
-    h += `<div class="jx-row"><label class="jx-f"><span>${t('age')}</span><input type="text" data-p="age" value="${esc(p.age)}" placeholder="${t('ageUnknown')}" style="width:90px"></label>`;
+        h += `<div class="jx-bank ${bank.balance < 0 ? 'jx-neg' : ''}"><span>🏦 ${t('phoneBalance')}</span><b>${bank.balance == null ? '—' : esc(fmt(bank.balance, bank.currency || ''))}</b>${bank.balance < 0 ? `<span>⚠ ${t('negative')}</span>` : ''}</div>`;
+    } else h += `<div class="jx-bank jx-dim">📵 ${t('phoneMissing')}</div>`;
+
+    h += '<div class="jx-people">' + visiblePeople().map((x) => `<button class="jx-tab ${x.id === ui.selected ? 'jx-on' : ''}" data-a="select" data-id="${esc(x.id)}">${kindIcon(x)} ${esc(x.name)}</button>`).join('')
+        + `<button class="jx-tab jx-add" data-a="addNpc">${t('addNpc')}</button></div>`;
+
+    h += `<div class="jx-card"><div class="jx-row"><label class="jx-f jx-inline"><span>${t('ageGroup')}</span>
+      <select data-p="group">${['unknown', 'child', 'teen', 'adult'].map((g) => `<option value="${g}" ${p.group === g ? 'selected' : ''}>${esc(t('g_' + g))}</option>`).join('')}</select></label>`;
     if (p.kind === 'npc') {
-        h += `<button class="menu_button" data-a="delNpc">${t('del')} NPC</button>`;
-        if (bank.installed) h += `<select data-p="phoneContact" class="jx-contact"><option value="">📱 —</option>${(ui.contacts || []).map((c) => `<option ${p.phoneContact === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
+        if (bank.installed) h += `<select data-p="phoneContact" class="jx-contact"><option value="">📱 —</option>${ui.contacts.map((c) => `<option ${p.phoneContact === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
+        h += `<button class="menu_button" data-a="delNpc">🗑 NPC</button>`;
     }
-    h += '</div><div class="jx-row jx-search">';
-    h += `<button class="menu_button" data-a="search" data-k="standard">${t('sStandard')}</button><button class="menu_button" data-a="search" data-k="parttime">${t('sPart')}</button>`;
-    if (canTeen(p)) h += `<button class="menu_button" data-a="search" data-k="teen">${t('sTeen')}</button>`;
-    if (canAdult(p)) h += `<button class="menu_button" data-a="search" data-k="adult">${t('sAdult')}</button>`;
-    h += `<button class="menu_button" data-a="manual">${t('manual')}</button><button class="menu_button" data-a="scan">${t('scan')}</button></div>`;
-    if (s.opt.importExport) h += `<div class="jx-row"><button class="menu_button" data-a="export">${t('export')}</button><button class="menu_button" data-a="import">${t('import')}</button><input type="file" id="jx_file" accept=".json" hidden></div>`;
-    if (ui.busy) h += `<div class="jx-dim">${t('searching')}</div>`;
-    if (ui.ideas.length && ui.ideaFor === p.id) {
-        h += `<div class="jx-sec"><div class="jx-st">${t('ideas')}</div>${ui.ideas.map((x, i) => `<div class="jx-idea"><b>${esc(x.title)}</b> ${esc(x.employer || '')} <span class="jx-dim">${esc(x.schedule || '')} ${x.amount ? fmt(x.amount, '') + '/' + esc(x.period || '') : ''}</span><div class="jx-dim">${esc(x.description || '')}</div><button class="menu_button" data-a="addIdea" data-i="${i}">${t('add')}</button></div>`).join('')}</div>`;
+    h += '</div>';
+
+    if (!canWork(p)) h += `<div class="jx-dim">${t('childNoJobs')}</div>`;
+    else {
+        const rOpen = ui.resume;
+        const filled = p.resume.skills || p.resume.seeking;
+        h += `<div class="jx-sh jx-rh" data-a="resumeToggle"><span>📄 ${t('resume')}</span><span class="jx-sbadge">${filled ? '●' : ''}</span><span class="jx-chev">${rOpen ? '▾' : '▸'}</span></div>`;
+        if (rOpen) {
+            h += `<label class="jx-f"><span>${t('skills')}</span><textarea rows="3" data-p="resume.skills" placeholder="${esc(t('skillsPh'))}">${esc(p.resume.skills)}</textarea></label>
+              <label class="jx-f"><span>${t('seeking')}</span><textarea rows="3" data-p="resume.seeking" placeholder="${esc(t('seekingPh'))}">${esc(p.resume.seeking)}</textarea></label>`;
+        }
+        h += '<div class="jx-row jx-search">';
+        h += `<button class="menu_button" data-a="search" data-k="standard">🔎 ${t('sStandard')}</button><button class="menu_button" data-a="search" data-k="parttime">⏱ ${t('sPart')}</button>`;
+        if (canTeen(p)) h += `<button class="menu_button" data-a="search" data-k="teen">🎒 ${t('sTeen')}</button>`;
+        if (canAdult(p)) h += `<button class="menu_button" data-a="search" data-k="adult">🔞 ${t('sAdult')}</button>`;
+        h += `<button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">🧭 ${t('scan')}</button></div>`;
     }
-    const jobs = p.jobs.filter(jobVisible);
-    h += `<div class="jx-st">${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-dim">${t('noJobs')}</div>`);
+    h += '</div>';
+
+    if (s.opt.importExport) h += `<div class="jx-row"><button class="menu_button" data-a="export">⬇ ${t('export')}</button><button class="menu_button" data-a="import">⬆ ${t('import')}</button><input type="file" id="jx_file" accept=".json" hidden></div>`;
+    if (ui.busy) h += `<div class="jx-busy">⏳ ${t('searching')}</div>`;
+    if (ui.ideas.length && ui.ideaFor === p.id) h += `<div class="jx-st">${t('ideas')}</div>${ui.ideas.map(ideaCard).join('')}`;
+
+    const jobs = p.jobs.filter((j) => jobVisibleFor(p, j));
+    h += `<div class="jx-st">💼 ${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-empty">${t('noJobs')}</div>`);
     if (s.opt.history && p.history.length) {
-        h += `<div class="jx-st">${t('history')}</div>` + p.history.map((j) => `<div class="jx-row jx-dim">${esc(j.title)} ${j.employer ? '· ' + esc(j.employer) : ''} · ${esc(fmt(j.salary.totalEarned, j.salary.currency))}</div>`).join('');
+        h += `<div class="jx-st">📦 ${t('history')}</div>` + p.history.map((j) => `<div class="jx-hist"><b>${esc(j.title)}</b> ${j.employer ? '· ' + esc(j.employer) : ''}<span class="jx-dim"> · ${esc(fmt(j.salary.totalEarned, j.salary.currency))}</span></div>`).join('');
     }
     body.innerHTML = h;
     body.scrollTop = scroll;
@@ -634,22 +784,27 @@ function renderSettings() {
     const s = S();
     const chk = (path, label) => `<label class="checkbox_label"><input type="checkbox" data-s="${path}" data-c="1" ${getByPath(s, path) ? 'checked' : ''}><span>${esc(label)}</span></label>`;
     const profOpts = (cur) => `<option value="">${t('s_default')}</option>` + profiles().map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-    el.innerHTML = `${chk('enabled', t('s_enable'))}
+    el.innerHTML = `<h4>${t('s_global')}</h4>${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
-      ${chk('adult', t('s_adult'))}
+      <label>${t('reducedPct')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label>
+      <h4>${t('s_ai')}</h4>
       <label>${t('s_api')} <select data-s="apiProfile" class="text_pole">${profOpts(s.apiProfile)}</select></label>
       <label>${t('s_fallback')} <select data-s="fallbackProfile" class="text_pole">${profOpts(s.fallbackProfile)}</select></label>
       ${chk('inject', t('s_inject'))}
       <label>${t('s_depth')} <input type="number" min="0" max="20" data-s="injectDepth" data-n="1" class="text_pole" value="${s.injectDepth}"></label>
-      ${chk('bankInChat', t('s_bank'))}
-      <label>${t('reducedPct')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label>
+      <h4>${t('s_phone')}</h4>${chk('bankInChat', t('s_bank'))}
       <label>${t('s_phoneKey')} <input type="text" data-s="phoneKey" class="text_pole" value="${esc(s.phoneKey)}"></label>
+      <div class="menu_button" id="jx_diag_btn">${t('diag')}</div>
+      <textarea id="jx_diag" class="text_pole" rows="8" readonly hidden placeholder="${esc(t('diagHint'))}"></textarea>
       <h4>${t('s_optional')}</h4>
       ${Object.keys(DEFAULTS.opt).map((k) => chk('opt.' + k, t('o_' + k))).join('')}
       <div class="menu_button" id="jx_open_btn">${t('open')}</div>`;
 }
 
-function rerenderAll() { updatePower(); renderPanel(); renderSettings(); const h = document.querySelector('#jx_panel .jx-title'); if (h) h.textContent = '💼 ' + t('title'); }
+function rerenderAll() {
+    updatePower(); updateFab(); renderPanel(); renderSettings();
+    const h = document.querySelector('#jx_panel .jx-title'); if (h) h.textContent = '💼 ' + t('title');
+}
 
 /* ------------------------------------------------------------------ */
 /* Actions                                                             */
@@ -662,11 +817,18 @@ function readNum(el) { const v = parseFloat(el.value); return Number.isNaN(v) ? 
 
 async function onChange(e) {
     const el = e.target;
-    if (el.dataset.a === 'aware') {
+    const a = el.dataset.a;
+    if (a === 'aware' || a === 'cow') {
         const { j } = findJob(el.dataset.j);
-        const set = new Set(j.awareness.who);
-        el.checked ? set.add(el.dataset.name) : set.delete(el.dataset.name);
-        j.awareness.who = [...set];
+        if (a === 'aware') {
+            const set = new Set(j.awareness.who);
+            el.checked ? set.add(el.dataset.name) : set.delete(el.dataset.name);
+            j.awareness.who = [...set];
+        } else {
+            const set = new Set(j.coworkers);
+            el.checked ? set.add(el.dataset.id) : set.delete(el.dataset.id);
+            j.coworkers = [...set];
+        }
         return afterChange();
     }
     if (!el.dataset.f && !el.dataset.p && !el.dataset.s) return;
@@ -704,30 +866,55 @@ function download(name, text) {
     a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
 
+async function linkCalendar(p, j, e) {
+    const id = await PhoneBridge.addCalendarEvent({ title: `${p.name}: ${t('l_' + e.type)} (${j.title})`, start: e.start, end: e.end || e.start, owner: p.name, type: 'leave', source: MODULE });
+    if (id) e.calId = String(id); else toastr.warning(t('calFail'));
+}
+
+async function createEntry(box, j, jp, planned) {
+    const type = box.querySelector('.jx-l-type').value;
+    const entry = {
+        id: uid(), type, start: box.querySelector('.jx-l-start').value, end: box.querySelector('.jx-l-end').value,
+        days: Number(box.querySelector('.jx-l-days').value) || 0, reason: box.querySelector('.jx-l-reason').value.trim(),
+        childId: (type === 'maternity' || type === 'paternity') ? box.querySelector('.jx-l-child').value : '',
+        planned, active: !planned, calId: '',
+    };
+    j.leave.entries.push(entry);
+    if (!planned) { j.state = LEAVE_STATE[type]; notify(t('evLeave'), `${jp.name}: ${t('l_' + type)}`); }
+    if (box.querySelector('.jx-l-cal')?.checked) await linkCalendar(jp, j, entry);
+}
+
 async function onClick(e) {
     const el = e.target.closest('[data-a]');
     if (!el || el.tagName === 'INPUT') return;
     const a = el.dataset.a;
     const s = S();
-    const p = D().people[ui.selected];
+    const P = D().people;
+    const p = P[ui.selected];
     const ctx = getContext();
     const { p: jp, j } = el.dataset.j ? findJob(el.dataset.j) : {};
     switch (a) {
         case 'select': ui.selected = el.dataset.id; ui.ideas = []; return renderPanel();
+        case 'resumeToggle': ui.resume = !ui.resume; return renderPanel();
+        case 'sec': { const k = `${j.id}:${el.dataset.sec}`; ui.sec[k] = !(ui.sec[k] ?? el.dataset.sec === 'pay'); return renderPanel(); }
         case 'addNpc': {
             const name = (await ctx.Popup?.show?.input?.(t('npcName'), t('npcName'))) ?? prompt(t('npcName'));
             if (!name) return;
             const id = 'npc:' + uid();
-            D().people[id] = { id, name: String(name).trim(), kind: 'npc', age: '', jobs: [], history: [], phoneContact: '' };
+            P[id] = mkPerson(id, String(name).trim(), 'npc');
             ui.selected = id; return afterChange();
         }
-        case 'delNpc': if (confirm(t('confirm'))) { delete D().people[ui.selected]; ui.selected = 'user'; return afterChange(); } return;
+        case 'delNpc': if (confirm(t('confirm'))) { delete P[ui.selected]; ui.selected = 'user'; return afterChange(); } return;
         case 'toggle': ui.exp[j.id] = !ui.exp[j.id]; return renderPanel();
-        case 'manual': { const nj = newJob({ title: '—' }); nj.title = ''; p.jobs.push(nj); ui.exp[nj.id] = true; return afterChange(); }
+        case 'manual': {
+            if (!canWork(p)) return;
+            const nj = newJob({ currency: worldCur() }); p.jobs.push(nj); ui.exp[nj.id] = true; return afterChange();
+        }
         case 'delJob': if (confirm(t('confirm'))) { jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange(); } return;
         case 'archiveJob': jp.history.push(clone(j)); jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange();
         case 'search': case 'scan': {
             const kind = el.dataset.k;
+            if (!canWork(p)) return;
             if (a === 'search' && ((kind === 'teen' && !canTeen(p)) || (kind === 'adult' && !canAdult(p)))) return;
             ui.busy = a; ui.ideas = []; ui.ideaFor = p.id; renderPanel();
             try {
@@ -740,9 +927,16 @@ async function onClick(e) {
             const x = ui.ideas[+el.dataset.i];
             let owner = p;
             if (x.owner) owner = visiblePeople().find((q) => q.name.toLowerCase() === String(x.owner).toLowerCase()) || p;
+            if (!canWork(owner)) return;
             let type = JOB_TYPES.includes(x.type) ? x.type : 'standard';
             if (type === 'adult' && !canAdult(owner)) type = 'standard';
-            const nj = newJob({ ...x, type, mode: MODES.includes(x.mode) ? x.mode : 'onsite', period: PERIODS.includes(x.period) ? x.period : 'month' });
+            if (type === 'teen' && !canTeen(owner)) type = 'parttime';
+            const nj = newJob({
+                title: x.title, employer: x.employer, category: x.category, description: x.description, schedule: x.schedule, type,
+                mode: MODES.includes(x.mode) ? x.mode : 'onsite', period: PERIODS.includes(x.period) ? x.period : 'month',
+                amount: x.amount, vacationDays: x.vacation_days, insurance: x.insurance, currency: CURRENCIES.includes(worldCur()) ? worldCur() : '$',
+            });
+            if (type === 'freelance') nj.salary.period = 'project';
             owner.jobs.push(nj); ui.exp[nj.id] = true; ui.ideas.splice(+el.dataset.i, 1); return afterChange();
         }
         case 'addTask':
@@ -750,38 +944,41 @@ async function onClick(e) {
             j.tasks.push({ id: uid(), desc: '', due: '', pay: 0, status: 'pending', paid: false }); return afterChange();
         case 'delTask': j.tasks.splice(+el.dataset.i, 1); return afterChange();
         case 'payPeriod': {
-            const f = leaveFactor(j);
-            await credit(jp, j, (Number(j.salary.amount) || 0) * f, 'Salary');
+            await credit(jp, j, (Number(j.salary.amount) || 0) * leaveFactor(j), 'Salary');
             return renderPanel();
         }
-        case 'startLeave': {
-            const box = el.closest('.jx-lf');
-            const type = box.querySelector('.jx-l-type').value;
-            const entry = {
-                id: uid(), type, start: box.querySelector('.jx-l-start').value, end: box.querySelector('.jx-l-end').value,
-                days: Number(box.querySelector('.jx-l-days').value) || 0, reason: box.querySelector('.jx-l-reason').value.trim(),
-                childId: (type === 'maternity' || type === 'paternity') ? box.querySelector('.jx-l-child').value : '',
-            };
-            j.leave.entries.push(entry);
-            if (!entry.end) { j.state = LEAVE_STATE[type]; notify(t('evLeave'), `${jp.name}: ${t('l_' + type)}`); }
+        case 'planLeave': await createEntry(el.closest('.jx-lf'), j, jp, true); return afterChange();
+        case 'startLeave': await createEntry(el.closest('.jx-lf'), j, jp, false); return afterChange();
+        case 'startEntry': {
+            const en = j.leave.entries[+el.dataset.i];
+            en.planned = false; en.active = true; j.state = LEAVE_STATE[en.type];
+            notify(t('evLeave'), `${jp.name}: ${t('l_' + en.type)}`);
             return afterChange();
         }
         case 'endLeave': {
             const en = j.leave.entries[+el.dataset.i];
-            en.end = today();
+            en.active = false;
+            if (!en.end) en.end = today();
             if (en.start && en.end < en.start) en.end = en.start;
-            if (isOnLeave(j)) j.state = 'working';
+            if (isOnLeave(j) && !j.leave.entries.some((x) => x.active)) j.state = 'working';
             notify(t('evLeaveEnd'), `${jp.name}: ${t('l_' + en.type)}`);
             return afterChange();
         }
-        case 'delLeave': j.leave.entries.splice(+el.dataset.i, 1); return afterChange();
+        case 'calEntry': { const en = j.leave.entries[+el.dataset.i]; await linkCalendar(jp, j, en); return afterChange(); }
+        case 'delLeave': {
+            const en = j.leave.entries[+el.dataset.i];
+            if (en.calId && en.calId !== 'linked') await PhoneBridge.removeCalendarEvent(en.calId);
+            j.leave.entries.splice(+el.dataset.i, 1);
+            return afterChange();
+        }
         case 'addCoworker': {
             const inp = el.closest('.jx-row').querySelector('.jx-cw');
             const name = inp.value.trim();
             if (!name) return;
-            j.coworkers.push(name);
             const id = 'npc:' + uid();
-            D().people[id] = { id, name, kind: 'npc', age: '', jobs: [newJob({ title: '', employer: j.employer, category: j.category })], history: [], phoneContact: '' };
+            P[id] = mkPerson(id, name, 'npc');
+            P[id].jobs.push(newJob({ employer: j.employer, category: j.category, currency: j.salary.currency }));
+            j.coworkers.push(id);
             return afterChange();
         }
         case 'summarize': {
@@ -792,10 +989,9 @@ async function onClick(e) {
             } catch { toastr.error(t('errApi')); }
             ui.busy = ''; return afterChange();
         }
-        case 'export': download(`jobs_${p.name}.json`, JSON.stringify({ jobs: p.jobs, history: p.history }, null, 2)); return;
+        case 'export': download(`jobs_${p.name}.json`, JSON.stringify({ jobs: p.jobs, history: p.history, resume: p.resume }, null, 2)); return;
         case 'import': document.getElementById('jx_file')?.click(); return;
-        case 'power':
-            s.enabled = !s.enabled; save(); applyPrompt(); rerenderAll(); return;
+        case 'power': s.enabled = !s.enabled; save(); applyPrompt(); rerenderAll(); return;
         case 'close': ui.open = false; document.getElementById('jx_panel').classList.remove('jx-open'); return;
         default:
     }
@@ -809,13 +1005,14 @@ async function onFile(e) {
         const p = D().people[ui.selected];
         for (const j of data.jobs || []) { const nj = { ...newJob(), ...j, id: uid() }; ensure(nj, newJob()); p.jobs.push(nj); }
         if (S().opt.history && Array.isArray(data.history)) p.history.push(...data.history);
+        if (data.resume && !p.resume.skills && !p.resume.seeking) p.resume = { skills: data.resume.skills || '', seeking: data.resume.seeking || '' };
         afterChange();
     } catch { toastr.error('Invalid file'); }
     e.target.value = '';
 }
 
 /* ------------------------------------------------------------------ */
-/* Init                                                                */
+/* Floating button (draggable) + init                                  */
 /* ------------------------------------------------------------------ */
 async function openPanel() {
     ui.open = true;
@@ -825,6 +1022,33 @@ async function openPanel() {
         ui.contacts = bank.installed ? await PhoneBridge.getContacts() : [];
     }
     renderPanel();
+}
+function togglePanel() { ui.open ? onClick({ target: document.querySelector('#jx_panel [data-a="close"]') }) : openPanel(); }
+
+function initFab(fab) {
+    const clamp = (x, y) => [Math.min(Math.max(0, x), window.innerWidth - fab.offsetWidth), Math.min(Math.max(0, y), window.innerHeight - fab.offsetHeight)];
+    const place = (x, y) => { [x, y] = clamp(x, y); fab.style.left = x + 'px'; fab.style.top = y + 'px'; fab.style.right = 'auto'; fab.style.bottom = 'auto'; };
+    try { const pos = JSON.parse(localStorage.getItem(LS_FAB) || 'null'); if (pos) place(pos.x, pos.y); } catch { /* ignore */ }
+    let drag = null;
+    fab.addEventListener('pointerdown', (e) => {
+        drag = { sx: e.clientX, sy: e.clientY, ox: fab.offsetLeft, oy: fab.offsetTop, moved: false };
+        fab.setPointerCapture(e.pointerId);
+    });
+    fab.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+        if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
+        if (drag.moved) place(drag.ox + dx, drag.oy + dy);
+    });
+    const end = () => {
+        if (!drag) return;
+        const d = drag; drag = null;
+        if (d.moved) localStorage.setItem(LS_FAB, JSON.stringify({ x: fab.offsetLeft, y: fab.offsetTop }));
+        else togglePanel();
+    };
+    fab.addEventListener('pointerup', end);
+    fab.addEventListener('pointercancel', () => { drag = null; });
+    window.addEventListener('resize', () => { if (fab.style.left) place(fab.offsetLeft, fab.offsetTop); });
 }
 
 function buildUi() {
@@ -843,8 +1067,8 @@ function buildUi() {
 
     const fab = document.createElement('div');
     fab.id = 'jx_fab'; fab.textContent = '💼'; fab.title = t('title');
-    fab.addEventListener('click', () => (ui.open ? onClick({ target: panel.querySelector('[data-a="close"]') }) : openPanel()));
     document.body.appendChild(fab);
+    initFab(fab);
 
     const menu = document.getElementById('extensionsMenu');
     if (menu) {
@@ -862,7 +1086,10 @@ function buildUi() {
         d.innerHTML = '<div class="inline-drawer-toggle inline-drawer-header"><b>Jobs &amp; Career</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div><div class="inline-drawer-content" id="jx_settings_body"></div>';
         host.appendChild(d);
         d.addEventListener('change', onChange);
-        d.addEventListener('click', (e) => { if (e.target.id === 'jx_open_btn') openPanel(); });
+        d.addEventListener('click', (e) => {
+            if (e.target.id === 'jx_open_btn') openPanel();
+            if (e.target.id === 'jx_diag_btn') { const ta = document.getElementById('jx_diag'); ta.hidden = false; ta.value = diagnose(); ta.select(); }
+        });
     }
 }
 
