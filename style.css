@@ -35,7 +35,9 @@
 .jx-title { font-weight: 700; font-size: 1.1em; flex: 1; letter-spacing: .2px; }
 .jx-head input[type=range] { width: 80px; accent-color: var(--jx-accent); }
 .jx-head .menu_button { margin: 0; padding: 4px 9px; min-width: 0; }
-#jx_power.jx-on { box-shadow: inset 0 0 0 2px #52c97a; }
+#jx_power.jx-on, #jx_phone.jx-on { box-shadow: inset 0 0 0 2px #52c97a; }
+#jx_phone:not(.jx-on) { opacity: .55; }
+.jx-head .menu_button i { pointer-events: none; }
 #jx_panel.jx-off #jx_power { box-shadow: inset 0 0 0 2px #d9534f; }
 #jx_panel.jx-off .jx-head input[type=range] { display: none; }
 #jx_body { flex: 1; overflow-y: auto; padding: 10px 12px 48px; scrollbar-width: thin; }

@@ -50,6 +50,8 @@ const I18N = {
         planVacation: 'Plan / start time off', coworkerNew: 'New coworker name', sec_pay: 'Salary & benefits', sec_leave: 'Time off', sec_tasks: 'Tasks', sec_aware: 'Awareness',
         sec_more: 'Extras', s_fab: 'Show floating button', diag: 'Phone-ST diagnostics', diagHint: 'Copy this and send it to the developer if the bank or calendar does not connect.',
         s_global: 'General', s_ai: 'AI & prompt', s_phone: 'Phone-ST',
+        ps_all: 'Phone-ST sync (everything)', ps_bank: 'Bank (balance, currency, deposits)', ps_cal: 'Calendar (time off)', ps_contacts: 'Contacts (link NPCs)', ps_date: 'Story date',
+        phoneOff: 'Phone sync is off: earnings are tracked here only.', bankOff: 'Bank sync is off: earnings are tracked here only.', phoneTip: 'Phone-ST sync on/off',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -90,6 +92,8 @@ const I18N = {
         planVacation: 'Запланировать / начать отпуск', coworkerNew: 'Имя нового коллеги', sec_pay: 'Зарплата и условия', sec_leave: 'Отпуск и отгулы', sec_tasks: 'Задания', sec_aware: 'Кто знает',
         sec_more: 'Дополнительно', s_fab: 'Показывать плавающую кнопку', diag: 'Диагностика Phone-ST', diagHint: 'Скопируйте и отправьте разработчику, если банк или календарь не подключаются.',
         s_global: 'Основное', s_ai: 'ИИ и промпт', s_phone: 'Phone-ST',
+        ps_all: 'Синхронизация с Phone-ST (всё)', ps_bank: 'Банк (баланс, валюта, зачисления)', ps_cal: 'Календарь (отпуска)', ps_contacts: 'Контакты (привязка NPC)', ps_date: 'Сюжетная дата',
+        phoneOff: 'Синхронизация с телефоном выключена: заработок считается только здесь.', bankOff: 'Синхронизация банка выключена: заработок считается только здесь.', phoneTip: 'Синхронизация с Phone-ST вкл/выкл',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -111,6 +115,7 @@ const CURRENCIES = ['₽', '$', '€', '£', '¥'];
 const DEFAULTS = {
     enabled: true,
     showFab: true,
+    phone: { all: true, bank: true, calendar: true, contacts: true, storyDate: true },
     lang: 'auto',
     adult: false,
     apiProfile: '',
@@ -267,7 +272,8 @@ function leaveFactor(j) {
 /* ------------------------------------------------------------------ */
 /* Phone-ST bridge (the only place that touches Phone-ST)              */
 /* ------------------------------------------------------------------ */
-const bank = { installed: false, balance: null, currency: null };
+// bank.detected = Phone-ST present; bank.installed = bank sync active; cal / contacts = those syncs active
+const bank = { detected: false, installed: false, cal: false, contacts: false, balance: null, currency: null };
 
 const PHONE_KEY = 'glassphone'; // Phone-ST stores settings in extension_settings[PHONE_KEY] and per-chat data in chat_metadata[PHONE_KEY]
 const SYMBOLS = { RUB: '₽', USD: '$', EUR: '€', GBP: '£', JPY: '¥', '₽': '₽', $: '$', '€': '€', '£': '£', '¥': '¥' };
@@ -384,13 +390,17 @@ async function diagnose() {
 
 async function refreshBank() {
     if (!S().enabled) return;
-    bank.installed = PhoneBridge.installed();
-    if (!bank.installed) { bank.balance = null; bank.currency = null; rpDate = null; return; }
+    const ph = S().phone;
+    bank.detected = PhoneBridge.installed();
+    const avail = bank.detected && ph.all;
+    bank.installed = avail && ph.bank;
+    bank.cal = avail && ph.calendar;
+    bank.contacts = avail && ph.contacts;
+    bank.balance = null; bank.currency = null; rpDate = null;
     try {
-        bank.balance = await PhoneBridge.getBalance();
-        bank.currency = await PhoneBridge.getCurrency();
-        rpDate = await PhoneBridge.rpToday();
-    } catch (e) { console.warn('[Jobs] bank refresh', e); }
+        if (bank.installed) { bank.balance = await PhoneBridge.getBalance(); bank.currency = await PhoneBridge.getCurrency(); }
+        if (avail && ph.storyDate) rpDate = await PhoneBridge.rpToday();
+    } catch (e) { console.warn('[Jobs] phone refresh', e); }
 }
 const effCur = (p, j) => (p.kind === 'user' && bank.currency ? bank.currency : j.salary.currency);
 const worldCur = () => bank.currency || '$';
@@ -410,7 +420,7 @@ async function credit(p, j, amount, reason) {
     j.salary.totalEarned = Math.round(((Number(j.salary.totalEarned) || 0) + amount) * 100) / 100;
     if (p.kind === 'user') {
         const ok = bank.installed ? await PhoneBridge.addMoney(amount, reason) : false;
-        if (!ok) toastr.warning(bank.installed ? t('depositFail') : t('phoneMissing'));
+        if (!ok && S().phone.all && S().phone.bank) toastr.warning(bank.installed ? t('depositFail') : t('phoneMissing'));
         await refreshBank();
     }
     notify(t('evPaid'), `${p.name}: ${fmt(amount, effCur(p, j))} (${j.title})`);
@@ -609,7 +619,7 @@ function renderLeave(j) {
       <input type="number" class="jx-l-days" placeholder="${t('days')}" title="${t('days')}" style="width:64px">
       <input type="text" class="jx-l-reason" placeholder="${t('reason')}">
       <select class="jx-l-child"><option value="">${t('child')}: —</option>${kids.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
-      ${bank.installed ? `<label class="jx-fc"><input type="checkbox" class="jx-l-cal" checked> 📅 ${t('calendar')}</label>` : ''}
+      ${bank.cal ? `<label class="jx-fc"><input type="checkbox" class="jx-l-cal" checked> 📅 ${t('calendar')}</label>` : ''}
       <button class="menu_button" data-a="planLeave" data-j="${j.id}">${t('plan')}</button>
       <button class="menu_button" data-a="startLeave" data-j="${j.id}">${t('startNow')}</button></div>`;
     if (L.entries.length) {
@@ -619,9 +629,9 @@ function renderLeave(j) {
           ${e.planned ? chip(t('planned'), 'jx-c-warn') : e.active ? chip('●', 'jx-c-ok') : ''}${e.calId ? chip('📅') : ''}
           ${e.reason ? `<div class="jx-dim">${esc(e.reason)}${e.childId && D().people[e.childId] ? ' · ' + esc(D().people[e.childId].name) : ''}</div>` : ''}</div>
           <div class="jx-ebtn">${e.planned ? `<button class="menu_button" data-a="startEntry" data-j="${j.id}" data-i="${i}">${t('startEntry')}</button>` : ''}
-          ${e.active ? `<button class="menu_button" data-a="endLeave" data-j="${j.id}" data-i="${i}">⏹ ${t('endLeave')}</button>` : ''}
-          ${bank.installed && !e.calId ? `<button class="menu_button" data-a="calEntry" data-j="${j.id}" data-i="${i}" title="${t('calendar')}">📅</button>` : ''}
-          <button class="menu_button" data-a="delLeave" data-j="${j.id}" data-i="${i}">✕</button></div></div>`).join('');
+          ${e.active ? `<button class="menu_button" data-a="endLeave" data-j="${j.id}" data-i="${i}">■ ${t('endLeave')}</button>` : ''}
+          ${bank.cal && !e.calId ? `<button class="menu_button" data-a="calEntry" data-j="${j.id}" data-i="${i}" title="${t('calendar')}">📅</button>` : ''}
+          <button class="menu_button" data-a="delLeave" data-j="${j.id}" data-i="${i}">×</button></div></div>`).join('');
     }
     return h;
 }
@@ -634,7 +644,7 @@ function renderTasks(j) {
         <input type="date" data-j="${j.id}" data-f="tasks.${i}.due" value="${esc(k.due)}" title="${t('due')}">
         <input type="number" step="any" data-j="${j.id}" data-f="tasks.${i}.pay" data-n="1" value="${esc(k.pay)}" title="${t('pay')}" style="width:80px">
         <select data-j="${j.id}" data-f="tasks.${i}.status">${opts(TASK_STATUS, k.status, 'ts_')}</select>
-        ${k.paid ? chip(t('paid'), 'jx-c-ok') : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">✕</button></div>`;
+        ${k.paid ? chip(t('paid'), 'jx-c-ok') : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">×</button></div>`;
     });
     return h;
 }
@@ -650,7 +660,7 @@ function renderAwareness(p, j) {
     return h;
 }
 
-const kindIcon = (p) => (p.kind === 'user' ? '👤' : p.kind === 'bot' ? '🤖' : '🧑');
+const kindIcon = (p) => (p.kind === 'user' ? '👤' : p.kind === 'bot' ? '🤖' : '🙂');
 
 function renderCoworkers(p, j) {
     const others = visiblePeople().filter((x) => x.id !== p.id);
@@ -711,6 +721,8 @@ function updatePower() {
     document.getElementById('jx_fab')?.classList.toggle('jx-off', !on);
     const b = document.getElementById('jx_power');
     if (b) { b.title = t('powerTip'); b.classList.toggle('jx-on', on); }
+    const ph = document.getElementById('jx_phone');
+    if (ph) { ph.title = t('phoneTip'); ph.classList.toggle('jx-on', !!S().phone.all); }
 }
 function updateFab() {
     const fab = document.getElementById('jx_fab');
@@ -730,7 +742,10 @@ function renderPanel() {
     let h = '';
     if (bank.installed) {
         h += `<div class="jx-bank ${bank.balance < 0 ? 'jx-neg' : ''}"><span>🏦 ${t('phoneBalance')}</span><b>${bank.balance == null ? '—' : esc(fmt(bank.balance, bank.currency || ''))}</b>${bank.balance < 0 ? `<span>⚠ ${t('negative')}</span>` : ''}</div>`;
-    } else h += `<div class="jx-bank jx-dim">📵 ${t('phoneMissing')}</div>`;
+    } else {
+        const msg = !S().phone.all ? t('phoneOff') : !bank.detected ? t('phoneMissing') : t('bankOff');
+        h += `<div class="jx-bank jx-dim">📵 ${msg}</div>`;
+    }
 
     h += '<div class="jx-people">' + visiblePeople().map((x) => `<button class="jx-tab ${x.id === ui.selected ? 'jx-on' : ''}" data-a="select" data-id="${esc(x.id)}">${kindIcon(x)} ${esc(x.name)}</button>`).join('')
         + `<button class="jx-tab jx-add" data-a="addNpc">${t('addNpc')}</button></div>`;
@@ -738,7 +753,7 @@ function renderPanel() {
     h += `<div class="jx-card"><div class="jx-row"><label class="jx-f jx-inline"><span>${t('ageGroup')}</span>
       <select data-p="group">${['unknown', 'child', 'teen', 'adult'].map((g) => `<option value="${g}" ${p.group === g ? 'selected' : ''}>${esc(t('g_' + g))}</option>`).join('')}</select></label>`;
     if (p.kind === 'npc') {
-        if (bank.installed) h += `<select data-p="phoneContact" class="jx-contact"><option value="">📱 —</option>${ui.contacts.map((c) => `<option ${p.phoneContact === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
+        if (bank.contacts) h += `<select data-p="phoneContact" class="jx-contact"><option value="">📱 —</option>${ui.contacts.map((c) => `<option ${p.phoneContact === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
         h += `<button class="menu_button" data-a="delNpc">🗑 NPC</button>`;
     }
     h += '</div>';
@@ -753,10 +768,10 @@ function renderPanel() {
               <label class="jx-f"><span>${t('seeking')}</span><textarea rows="3" data-p="resume.seeking" placeholder="${esc(t('seekingPh'))}">${esc(p.resume.seeking)}</textarea></label>`;
         }
         h += '<div class="jx-row jx-search">';
-        h += `<button class="menu_button" data-a="search" data-k="standard">🔎 ${t('sStandard')}</button><button class="menu_button" data-a="search" data-k="parttime">⏱ ${t('sPart')}</button>`;
+        h += `<button class="menu_button" data-a="search" data-k="standard">🔎 ${t('sStandard')}</button><button class="menu_button" data-a="search" data-k="parttime">🕑 ${t('sPart')}</button>`;
         if (canTeen(p)) h += `<button class="menu_button" data-a="search" data-k="teen">🎒 ${t('sTeen')}</button>`;
         if (canAdult(p)) h += `<button class="menu_button" data-a="search" data-k="adult">🔞 ${t('sAdult')}</button>`;
-        h += `<button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">🧭 ${t('scan')}</button></div>`;
+        h += `<button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">📡 ${t('scan')}</button></div>`;
     }
     h += '</div>';
 
@@ -779,7 +794,7 @@ function renderSettings() {
     const el = document.getElementById('jx_settings_body');
     if (!el) return;
     const s = S();
-    const chk = (path, label) => `<label class="checkbox_label"><input type="checkbox" data-s="${path}" data-c="1" ${getByPath(s, path) ? 'checked' : ''}><span>${esc(label)}</span></label>`;
+    const chk = (path, label, dis = false) => `<label class="checkbox_label"><input type="checkbox" data-s="${path}" data-c="1" ${getByPath(s, path) ? 'checked' : ''} ${dis ? 'disabled' : ''}><span>${esc(label)}</span></label>`;
     const profOpts = (cur) => `<option value="">${t('s_default')}</option>` + profiles().map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
     el.innerHTML = `<h4>${t('s_global')}</h4>${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
@@ -789,7 +804,7 @@ function renderSettings() {
       <label>${t('s_fallback')} <select data-s="fallbackProfile" class="text_pole">${profOpts(s.fallbackProfile)}</select></label>
       ${chk('inject', t('s_inject'))}
       <label>${t('s_depth')} <input type="number" min="0" max="20" data-s="injectDepth" data-n="1" class="text_pole" value="${s.injectDepth}"></label>
-      <h4>${t('s_phone')}</h4>${chk('bankInChat', t('s_bank'))}
+      <h4>${t('s_phone')}</h4>${chk('phone.all', t('ps_all'))}${chk('phone.bank', t('ps_bank'), !s.phone.all)}${chk('phone.calendar', t('ps_cal'), !s.phone.all)}${chk('phone.contacts', t('ps_contacts'), !s.phone.all)}${chk('phone.storyDate', t('ps_date'), !s.phone.all)}${chk('bankInChat', t('s_bank'), !s.phone.all || !s.phone.bank)}
       <label>${t('s_phoneKey')} <input type="text" data-s="phoneKey" class="text_pole" value="${esc(s.phoneKey)}"></label>
       <div class="menu_button" id="jx_diag_btn">${t('diag')}</div>
       <textarea id="jx_diag" class="text_pole" rows="8" readonly hidden placeholder="${esc(t('diagHint'))}"></textarea>
@@ -833,6 +848,7 @@ async function onChange(e) {
     if (el.dataset.s) {
         setByPath(S(), el.dataset.s, val);
         if (el.dataset.s === 'phoneKey') resetPhoneMods();
+        if (el.dataset.s === 'phoneKey' || el.dataset.s.startsWith('phone.')) await refreshBank();
         save(); applyPrompt(); rerenderAll();
         return;
     }
@@ -871,7 +887,7 @@ async function linkCalendar(p, j, e) {
     const ids = [];
     const a = await PhoneBridge.addCalendarEvent({ title: `${base} ▶`, date: e.start, who });
     if (a) ids.push(a);
-    if (a && e.end && e.end !== e.start) { const b = await PhoneBridge.addCalendarEvent({ title: `${base} ⏹`, date: e.end, who }); if (b) ids.push(b); }
+    if (a && e.end && e.end !== e.start) { const b = await PhoneBridge.addCalendarEvent({ title: `${base} ■`, date: e.end, who }); if (b) ids.push(b); }
     if (ids.length) e.calId = ids.join(','); else toastr.warning(t('calFail'));
 }
 
@@ -995,6 +1011,7 @@ async function onClick(e) {
         }
         case 'export': download(`jobs_${p.name}.json`, JSON.stringify({ jobs: p.jobs, history: p.history, resume: p.resume }, null, 2)); return;
         case 'import': document.getElementById('jx_file')?.click(); return;
+        case 'phone': s.phone.all = !s.phone.all; save(); await refreshBank(); applyPrompt(); rerenderAll(); return;
         case 'power': s.enabled = !s.enabled; save(); applyPrompt(); rerenderAll(); return;
         case 'close': ui.open = false; document.getElementById('jx_panel').classList.remove('jx-open'); return;
         default:
@@ -1023,7 +1040,7 @@ async function openPanel() {
     document.getElementById('jx_panel').classList.add('jx-open');
     if (S().enabled) {
         await refreshBank();
-        ui.contacts = bank.installed ? await PhoneBridge.getContacts() : [];
+        ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];
     }
     renderPanel();
 }
@@ -1060,8 +1077,9 @@ function buildUi() {
     panel.id = 'jx_panel';
     panel.innerHTML = `<div class="jx-head"><span class="jx-title">💼 ${t('title')}</span>
       <input type="range" id="jx_opacity" min="0.3" max="1" step="0.05" value="${opacity()}">
-      <button class="menu_button" id="jx_power" data-a="power">⏻</button>
-      <button class="menu_button" data-a="close">✕</button></div><div id="jx_body"></div>`;
+      <button class="menu_button" id="jx_phone" data-a="phone"><i class="fa-solid fa-mobile-screen-button"></i></button>
+      <button class="menu_button" id="jx_power" data-a="power"><i class="fa-solid fa-power-off"></i></button>
+      <button class="menu_button" data-a="close"><i class="fa-solid fa-xmark"></i></button></div><div id="jx_body"></div>`;
     document.body.appendChild(panel);
     panel.style.opacity = opacity();
     panel.querySelector('#jx_opacity').addEventListener('input', (e) => { panel.style.opacity = e.target.value; localStorage.setItem(LS_OPACITY, e.target.value); });

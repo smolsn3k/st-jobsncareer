@@ -55,6 +55,8 @@ With Phone-ST (the "Телефон" / glassphone extension) enabled:
 - **Story date:** date fields default to the in-story "today" from Phone-ST when it can tell, instead of your computer's date.
 - **Contacts:** NPCs can be linked to phone contacts.
 
+Phone sync can be switched off completely (the phone button in the panel header, or **Phone-ST sync** in the settings), or per function: bank, calendar, contacts and story date. With bank sync off, earnings only count toward "total earned".
+
 The extension finds Phone-ST in a folder named `Phone-ST` next to this one. If you installed it under a different folder name, enter that name under **Phone-ST folder name** in the extension settings. If anything does not connect, press **Phone-ST diagnostics** in the settings to see what was found.
 
 ## Languages
