@@ -31,7 +31,7 @@ const I18N = {
         noLeaveTasks: 'This character is on leave: no work tasks.', adultBlocked: 'Adult jobs are not allowed for this age.',
         s_enable: 'Enable extension', s_lang: 'Language', s_adult: 'Adult content (adult jobs)', s_api: 'API profile', s_fallback: 'Fallback profile',
         s_default: '(current API)', s_inject: 'Inject job info into chat', s_depth: 'Injection depth', s_bank: 'Include bank info in chat',
-        s_phoneKey: 'Phone-ST settings key (optional)', s_optional: 'Optional features', open: 'Open Jobs panel',
+        s_phoneKey: 'Phone-ST folder name (optional, default: Phone-ST)', s_optional: 'Optional features', open: 'Open Jobs panel',
         o_history: 'Job history', o_coworkers: 'Link coworkers as NPCs', o_commute: 'Commute / location field', o_importExport: 'Import / export',
         o_events: 'Job event notifications', o_autosummary: 'Auto-summary of job chat', o_sliders: 'Stress & satisfaction sliders',
         t_standard: 'Standard', t_parttime: 'Part-time', t_teen: 'Teen', t_freelance: 'Freelance', t_adult: 'Adult',
@@ -71,7 +71,7 @@ const I18N = {
         noLeaveTasks: 'Персонаж в отпуске: рабочих заданий нет.', adultBlocked: 'Работа 18+ недоступна для этого возраста.',
         s_enable: 'Включить расширение', s_lang: 'Язык', s_adult: 'Контент 18+ (работа 18+)', s_api: 'Профиль API', s_fallback: 'Запасной профиль',
         s_default: '(текущий API)', s_inject: 'Добавлять инфо о работе в чат', s_depth: 'Глубина вставки', s_bank: 'Включать данные банка в чат',
-        s_phoneKey: 'Ключ настроек Phone-ST (необязательно)', s_optional: 'Дополнительные функции', open: 'Открыть панель работ',
+        s_phoneKey: 'Имя папки Phone-ST (необязательно, по умолчанию Phone-ST)', s_optional: 'Дополнительные функции', open: 'Открыть панель работ',
         o_history: 'История работ', o_coworkers: 'Коллеги как NPC', o_commute: 'Поле «дорога / место»', o_importExport: 'Импорт / экспорт',
         o_events: 'Уведомления о событиях', o_autosummary: 'Авто-резюме рабочего чата', o_sliders: 'Ползунки стресса и удовлетворённости',
         t_standard: 'Обычная', t_parttime: 'Подработка', t_teen: 'Подростковая', t_freelance: 'Фриланс', t_adult: '18+',
@@ -151,7 +151,7 @@ function save() {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => rpDate || new Date().toISOString().slice(0, 10);
 
 function curLang() {
     const l = S().lang;
@@ -269,131 +269,128 @@ function leaveFactor(j) {
 /* ------------------------------------------------------------------ */
 const bank = { installed: false, balance: null, currency: null };
 
-function findKey(obj, re, depth = 3) {
-    if (!isObj(obj) || depth < 0) return null;
-    for (const k of Object.keys(obj)) if (re.test(k) && typeof obj[k] === 'number') return { owner: obj, key: k };
-    for (const k of Object.keys(obj)) { const r = findKey(obj[k], re, depth - 1); if (r) return r; }
+const PHONE_KEY = 'glassphone'; // Phone-ST stores settings in extension_settings[PHONE_KEY] and per-chat data in chat_metadata[PHONE_KEY]
+const SYMBOLS = { RUB: '₽', USD: '$', EUR: '€', GBP: '£', JPY: '¥', '₽': '₽', $: '$', '€': '€', '£': '£', '¥': '¥' };
+let rpDate = null; // Phone-ST's in-story "today" (YYYY-MM-DD), when available
+
+// Phone-ST's own modules (official functions are preferred; direct data access is the fallback)
+let phoneMods = null;
+let phoneModsTried = false;
+async function loadPhoneMods() {
+    if (phoneMods || phoneModsTried) return phoneMods;
+    phoneModsTried = true;
+    const folders = [S().phoneKey, 'Phone-ST', 'Phone-ST-main', 'phone-st', 'PhoneST'].filter(Boolean);
+    for (const folder of folders) {
+        try {
+            const base = new URL(`../${folder}/`, import.meta.url);
+            const [state, bankM, plans] = await Promise.all(['state.js', 'bank.js', 'plans.js'].map((f) => import(new URL(f, base).href)));
+            phoneMods = { state, bank: bankM, plans, folder };
+            return phoneMods;
+        } catch { /* try next folder name */ }
+    }
     return null;
 }
-const SYMBOLS = { RUB: '₽', USD: '$', EUR: '€', GBP: '£', JPY: '¥', '₽': '₽', $: '$', '€': '€', '£': '£', '¥': '¥' };
-const BAL_STRICT = /^(bank)?(balance|money|funds)$/i;
-const BAL_LOOSE = /balance|money|funds|cash|wallet/i;
+const resetPhoneMods = () => { phoneMods = null; phoneModsTried = false; };
 
 const PhoneBridge = {
-    api() {
-        for (const k of ['PhoneST', 'phoneST', 'Phone_ST', 'STPhone', 'stPhone', 'phone_st']) if (window[k] && typeof window[k] === 'object') return window[k];
-        return null;
-    },
-    // Possible data stores: extension settings and chat metadata entries that look like Phone-ST
-    stores() {
-        const out = [];
-        const es = extension_settings;
-        const md = getContext().chatMetadata || {};
-        const key = S().phoneKey;
-        if (key) { if (isObj(es[key])) out.push(es[key]); if (isObj(md[key])) out.push(md[key]); }
-        for (const k of Object.keys(es)) if (k !== MODULE && k !== key && /phone/i.test(k) && isObj(es[k])) out.push(es[k]);
-        for (const k of Object.keys(md)) if (k !== MODULE && k !== key && /phone/i.test(k) && isObj(md[k])) out.push(md[k]);
-        return out;
-    },
-    installed() { return !!(this.api() || this.stores().length); },
-    async call(names, ...args) {
-        const api = this.api();
-        if (!api) return undefined;
-        for (const scope of [api, api.bank, api.calendar].filter(Boolean)) {
-            for (const n of names) if (typeof scope[n] === 'function') { try { return await scope[n](...args); } catch (e) { console.warn('[Jobs] phone call failed', n, e); } }
-        }
-        return undefined;
-    },
-    findBalance() {
-        for (const re of [BAL_STRICT, BAL_LOOSE]) for (const st of this.stores()) { const h = findKey(st, re); if (h) return h; }
-        return null;
-    },
+    settings() { return isObj(extension_settings[PHONE_KEY]) ? extension_settings[PHONE_KEY] : null; },
+    meta() { const m = getContext().chatMetadata?.[PHONE_KEY]; return isObj(m) ? m : null; },
+    installed() { const st = this.settings(); return !!st && st.isEnabled !== false; },
     async getBalance() {
-        const v = await this.call(['getBalance', 'getBankBalance', 'balance']);
-        if (typeof v === 'number') return v;
-        const h = this.findBalance();
-        return h ? h.owner[h.key] : null;
+        const mods = await loadPhoneMods();
+        try { if (mods) return Number(mods.bank.getBank().balance) || 0; } catch (e) { console.warn('[Jobs] getBank failed', e); }
+        const b = this.meta()?.bank;
+        return typeof b?.balance === 'number' ? b.balance : 0;
     },
     async getCurrency() {
-        let v = await this.call(['getCurrency', 'currency']);
-        if (!v) for (const st of this.stores()) { v = st?.bank?.currency ?? st?.currency ?? st?.settings?.currency; if (v) break; }
-        return v ? (SYMBOLS[String(v).toUpperCase()] || SYMBOLS[v] || String(v)) : null;
+        const mods = await loadPhoneMods();
+        let v;
+        try { v = mods ? mods.bank.getBank().currency : this.meta()?.bank?.currency; } catch { /* ignore */ }
+        v = v || '₽';
+        return SYMBOLS[String(v).toUpperCase()] || SYMBOLS[v] || String(v);
     },
-    async addMoney(amount, reason) {
-        window.dispatchEvent(new CustomEvent('jobsext:bank-credit', { detail: { amount, reason } }));
-        const r = await this.call(['addMoney', 'addBalance', 'deposit', 'creditBank', 'bankDeposit', 'changeBalance'], amount, reason);
-        if (r !== undefined) return r !== false;
-        const h = this.findBalance();
-        if (h) { h.owner[h.key] = Math.round((h.owner[h.key] + amount) * 100) / 100; save(); return true; }
-        return false;
+    // Deposits go through Phone-ST's own addTransaction (same path as its bank app).
+    // Note: Phone-ST's bank works in whole currency units, so cents are rounded.
+    async addMoney(amount, label) {
+        const mods = await loadPhoneMods();
+        if (mods) {
+            try { return !!mods.bank.addTransaction({ amount, label, category: 'зарплата' }); } catch (e) { console.warn('[Jobs] addTransaction failed', e); }
+        }
+        const m = this.meta();
+        const amt = Math.round(Number(amount) || 0);
+        if (!m || !amt) return false;
+        if (!isObj(m.bank)) m.bank = {};
+        const b = m.bank;
+        if (typeof b.balance !== 'number') b.balance = 0;
+        if (typeof b.currency !== 'string') b.currency = '₽';
+        for (const k of ['transactions', 'loans', 'recurring', 'seenTags', 'seenRpBalances', 'syncQueue', 'txKeys']) if (!Array.isArray(b[k])) b[k] = [];
+        b.transactions.unshift({ id: uid(), amount: amt, label: String(label || '').slice(0, 60) || 'Salary', category: 'зарплата', time: Date.now() });
+        b.balance += amt;
+        b.syncQueue.push({ amount: amt, at: getContext().chat?.length || 0 });
+        save();
+        return true;
     },
     async getContacts() {
-        let v = await this.call(['getContacts', 'contacts']);
-        if (!v) for (const st of this.stores()) { v = st?.contacts; if (v) break; }
-        if (Array.isArray(v)) return v.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean);
-        if (isObj(v)) return Object.values(v).map((c) => c?.name).filter(Boolean);
-        return [];
+        const c = this.meta()?.contacts;
+        return Array.isArray(c) ? c.map((x) => (typeof x === 'string' ? x : x?.name)).filter(Boolean) : [];
     },
-    async getMessages(limit = 30) {
-        let v = await this.call(['getMessages', 'messages']);
-        if (!v) for (const st of this.stores()) { v = st?.messages; if (v) break; }
-        const out = [];
-        const walk = (x) => { if (Array.isArray(x)) x.forEach(walk); else if (isObj(x)) { if (typeof x.text === 'string') out.push(x.text); else if (typeof x.mes === 'string') out.push(x.mes); else Object.values(x).forEach(walk); } };
-        walk(v);
-        return out.slice(-limit);
+    // Phone SMS live inside the chat history, which the scan already reads
+    async getMessages() { return []; },
+    async notify() { return false; },
+    async rpToday() {
+        const mods = await loadPhoneMods();
+        try { return mods?.plans?.rpToday?.() || null; } catch { return null; }
     },
-    async notify(title, text) {
-        const r = await this.call(['notify', 'addNotification', 'pushNotification', 'sendNotification'], title, text);
-        return r !== undefined;
-    },
-    // Calendar: only used through Phone-ST's own functions (never writes into its data blindly)
-    async addCalendarEvent(ev) {
-        window.dispatchEvent(new CustomEvent('jobsext:calendar-add', { detail: ev }));
-        const r = await this.call(['addCalendarEvent', 'addEvent', 'createEvent', 'addCalendarEntry'], ev);
-        if (r === undefined || r === false || r === null) return null;
-        return r?.id ?? (r === true ? 'linked' : String(r));
+    // Calendar = Phone-ST "plans" (single-date entries on the story calendar)
+    async addCalendarEvent({ title, date, who = 'user' }) {
+        if (!date) return null;
+        const mods = await loadPhoneMods();
+        if (mods) {
+            try { return mods.plans.addPlan({ text: title, date, who, source: 'jobs' })?.id || null; } catch (e) { console.warn('[Jobs] addPlan failed', e); }
+        }
+        const m = this.meta();
+        if (!m || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+        if (!Array.isArray(m.plans)) m.plans = [];
+        const plan = { id: uid(), text: String(title).slice(0, 200), date, time: '', who, done: false, source: 'jobs', at: Date.now() };
+        m.plans.push(plan);
+        m.plans.sort((a, b) => a.date.localeCompare(b.date));
+        save();
+        return plan.id;
     },
     async removeCalendarEvent(id) {
-        window.dispatchEvent(new CustomEvent('jobsext:calendar-remove', { detail: { id } }));
-        await this.call(['removeCalendarEvent', 'deleteCalendarEvent', 'removeEvent', 'deleteEvent'], id);
+        const mods = await loadPhoneMods();
+        if (mods) { try { mods.plans.deletePlan(id); return; } catch (e) { console.warn('[Jobs] deletePlan failed', e); } }
+        const m = this.meta();
+        if (m && Array.isArray(m.plans)) { m.plans = m.plans.filter((p) => p.id !== id); save(); }
     },
 };
 
-// Compact view of how Phone-ST stores data (types only, no private text) to help wire the bridge
-function shape(o, depth = 3) {
-    if (Array.isArray(o)) return `[${o.length} items${o.length && depth > 0 ? ': ' + JSON.stringify(shape(o[0], depth - 1)) : ''}]`;
-    if (isObj(o)) {
-        if (depth <= 0) return `{${Object.keys(o).slice(0, 12).join(', ')}}`;
-        const r = {};
-        for (const k of Object.keys(o).slice(0, 25)) r[k] = shape(o[k], depth - 1);
-        return r;
-    }
-    if (typeof o === 'number' || typeof o === 'boolean') return o;
-    if (typeof o === 'string') return o.length <= 3 ? o : `str(${o.length})`;
-    return typeof o;
-}
-
-function diagnose() {
+async function diagnose() {
+    const mods = await loadPhoneMods();
     const md = getContext().chatMetadata || {};
-    const lines = [];
-    lines.push('Jobs & Career diagnostics');
-    lines.push('window globals: ' + (Object.keys(window).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
-    const api = PhoneBridge.api();
-    lines.push('bridge api object: ' + (api ? Object.keys(api).join(', ') : '(none)'));
-    lines.push('extension_settings keys: ' + (Object.keys(extension_settings).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
-    lines.push('chat metadata keys: ' + (Object.keys(md).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
-    lines.push('localStorage keys: ' + (Object.keys(localStorage).filter((k) => /phone/i.test(k)).join(', ') || '(none)'));
-    const h = PhoneBridge.findBalance();
-    lines.push('balance found: ' + (h ? `${h.key} = ${h.owner[h.key]}` : 'no'));
-    PhoneBridge.stores().forEach((st, i) => lines.push(`store ${i} shape: ` + JSON.stringify(shape(st, 3))));
-    return lines.join('\n');
+    const m = PhoneBridge.meta();
+    return [
+        'Jobs & Career diagnostics',
+        `Phone-ST settings (extension_settings.${PHONE_KEY}): ${PhoneBridge.settings() ? 'found' + (PhoneBridge.settings().isEnabled === false ? ' (disabled)' : '') : 'NOT found'}`,
+        `Phone-ST chat data (chat_metadata.${PHONE_KEY}): ${m ? 'found' : 'NOT found in this chat'}`,
+        `Phone-ST modules imported: ${mods ? 'yes, folder "' + mods.folder + '"' : 'no (using direct data access)'}`,
+        `bank: ${m?.bank ? `balance ${m.bank.balance}, currency ${m.bank.currency}, ${m.bank.transactions?.length || 0} transactions` : 'no bank data yet'}`,
+        `contacts: ${Array.isArray(m?.contacts) ? m.contacts.length : 0}, plans: ${Array.isArray(m?.plans) ? m.plans.length : 0}`,
+        `story date (rpToday): ${rpDate || 'unknown'}`,
+        `extension_settings keys with "phone": ${Object.keys(extension_settings).filter((k) => /phone/i.test(k)).join(', ') || '(none)'}`,
+        `chat metadata keys with "phone"/"glass": ${Object.keys(md).filter((k) => /phone|glass/i.test(k)).join(', ') || '(none)'}`,
+    ].join('\n');
 }
 
 async function refreshBank() {
     if (!S().enabled) return;
     bank.installed = PhoneBridge.installed();
-    if (!bank.installed) { bank.balance = null; bank.currency = null; return; }
-    try { bank.balance = await PhoneBridge.getBalance(); bank.currency = await PhoneBridge.getCurrency(); } catch (e) { console.warn('[Jobs] bank refresh', e); }
+    if (!bank.installed) { bank.balance = null; bank.currency = null; rpDate = null; return; }
+    try {
+        bank.balance = await PhoneBridge.getBalance();
+        bank.currency = await PhoneBridge.getCurrency();
+        rpDate = await PhoneBridge.rpToday();
+    } catch (e) { console.warn('[Jobs] bank refresh', e); }
 }
 const effCur = (p, j) => (p.kind === 'user' && bank.currency ? bank.currency : j.salary.currency);
 const worldCur = () => bank.currency || '$';
@@ -835,6 +832,7 @@ async function onChange(e) {
     const val = el.dataset.c ? el.checked : el.dataset.n ? readNum(el) : el.value;
     if (el.dataset.s) {
         setByPath(S(), el.dataset.s, val);
+        if (el.dataset.s === 'phoneKey') resetPhoneMods();
         save(); applyPrompt(); rerenderAll();
         return;
     }
@@ -867,8 +865,14 @@ function download(name, text) {
 }
 
 async function linkCalendar(p, j, e) {
-    const id = await PhoneBridge.addCalendarEvent({ title: `${p.name}: ${t('l_' + e.type)} (${j.title})`, start: e.start, end: e.end || e.start, owner: p.name, type: 'leave', source: MODULE });
-    if (id) e.calId = String(id); else toastr.warning(t('calFail'));
+    if (!e.start) { toastr.warning(t('calFail')); return; }
+    const who = p.kind === 'user' ? 'user' : 'char';
+    const base = `🏖 ${p.name}: ${t('l_' + e.type)} — ${j.title || ''}`;
+    const ids = [];
+    const a = await PhoneBridge.addCalendarEvent({ title: `${base} ▶`, date: e.start, who });
+    if (a) ids.push(a);
+    if (a && e.end && e.end !== e.start) { const b = await PhoneBridge.addCalendarEvent({ title: `${base} ⏹`, date: e.end, who }); if (b) ids.push(b); }
+    if (ids.length) e.calId = ids.join(','); else toastr.warning(t('calFail'));
 }
 
 async function createEntry(box, j, jp, planned) {
@@ -967,7 +971,7 @@ async function onClick(e) {
         case 'calEntry': { const en = j.leave.entries[+el.dataset.i]; await linkCalendar(jp, j, en); return afterChange(); }
         case 'delLeave': {
             const en = j.leave.entries[+el.dataset.i];
-            if (en.calId && en.calId !== 'linked') await PhoneBridge.removeCalendarEvent(en.calId);
+            if (en.calId) for (const cid of en.calId.split(',')) await PhoneBridge.removeCalendarEvent(cid);
             j.leave.entries.splice(+el.dataset.i, 1);
             return afterChange();
         }
@@ -1086,9 +1090,9 @@ function buildUi() {
         d.innerHTML = '<div class="inline-drawer-toggle inline-drawer-header"><b>Jobs &amp; Career</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div><div class="inline-drawer-content" id="jx_settings_body"></div>';
         host.appendChild(d);
         d.addEventListener('change', onChange);
-        d.addEventListener('click', (e) => {
+        d.addEventListener('click', async (e) => {
             if (e.target.id === 'jx_open_btn') openPanel();
-            if (e.target.id === 'jx_diag_btn') { const ta = document.getElementById('jx_diag'); ta.hidden = false; ta.value = diagnose(); ta.select(); }
+            if (e.target.id === 'jx_diag_btn') { const ta = document.getElementById('jx_diag'); ta.hidden = false; ta.value = '…'; ta.value = await diagnose(); ta.select(); }
         });
     }
 }

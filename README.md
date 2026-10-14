@@ -48,9 +48,14 @@ The 💼 floating button can be dragged anywhere (its position is remembered per
 
 Phone-ST is optional. Without it, earnings only count toward "total earned" and are not deposited anywhere. The extension never keeps its own balance.
 
-All Phone-ST access lives in the `PhoneBridge` object in `index.js`. If your Phone-ST version keeps its bank somewhere the bridge can't find, enter its settings key under **Phone-ST settings key** in the extension settings, or adjust `getBalance`, `getCurrency` and `addMoney`. Every deposit also fires a `jobsext:bank-credit` event on `window`.
+With Phone-ST (the "Телефон" / glassphone extension) enabled:
 
-If the balance does not show, open the extension settings and press **Phone-ST diagnostics**: it prints how Phone-ST stores its data (types only, no message text) so the bridge can be matched to it. Calendar linking likewise goes through Phone-ST's own functions and fires `jobsext:calendar-add` / `jobsext:calendar-remove` events.
+- **Bank:** the balance and currency shown in the panel come from the phone's bank. Salary and paid tasks are deposited as a "зарплата" (salary) transaction through Phone-ST's own bank code, so it shows up in the bank app and the story stays in sync. Phone-ST's bank works in whole currency units, so cents are rounded on deposit.
+- **Calendar:** planned or started time off can be added to the phone calendar (a marker on the start date and one on the end date). Removing the leave entry removes those calendar entries.
+- **Story date:** date fields default to the in-story "today" from Phone-ST when it can tell, instead of your computer's date.
+- **Contacts:** NPCs can be linked to phone contacts.
+
+The extension finds Phone-ST in a folder named `Phone-ST` next to this one. If you installed it under a different folder name, enter that name under **Phone-ST folder name** in the extension settings. If anything does not connect, press **Phone-ST diagnostics** in the settings to see what was found.
 
 ## Languages
 
