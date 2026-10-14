@@ -27,11 +27,34 @@ Open the panel with the 💼 button, the **Jobs** entry in the Extensions menu (
 - Leave tracker per job: vacation, sick, maternity, paternity and unpaid leave with allowances, used/planned/left days, dates, manual adjustments and reduced pay
 - Vacation planner: plan time off ahead, start it later, end it; optionally add it to the Phone-ST calendar
 - Salary with currency and pay period, running total earned, freelance rates, per-job tasks that pay out when done
+- Job history: archived jobs can be restored from the Previous jobs list (optional feature)
 - Job search (standard, part-time, teen, adult), manual entry, and scanning the chat or character card
 - Age rules and an adult content toggle (off by default)
 - Awareness: choose who knows about each job
 - Phone-ST integration (bank balance, currency, deposits, contacts, messages, notifications)
 - Optional extras (off by default): job history, coworkers as NPCs, commute field, import/export, event notifications, chat auto-summary, stress and satisfaction sliders
+
+## Tracking from the chat (hidden tags)
+
+When a job exists, the model is asked to add hidden tags at the end of its replies, for example:
+
+```
+[job:task|Alex|Chef|Prepare tasting menu|2026-11-06|200]
+[job:done|Alex|Chef|tasting menu]
+[job:fail|Alex|Chef|Order supplies]
+[job:stress|Alex|Chef|+8]      (only with the stress/satisfaction option on)
+[job:promo|Alex|Chef|+20]
+[job:promoted|Alex|Chef|Head Chef|15]
+```
+
+After each character reply the extension applies the tags and removes them from the message, so they never stay in the chat or the context. The **Recent changes** list at the bottom of the panel shows what each tag did. Turn this off with **Track job events from the chat** in the settings.
+
+- **Tasks:** new tasks appear in the job; done tasks pay out (into the Phone-ST bank for the user); failed tasks apply the penalty. Done and failed tasks are mentioned to the model for the next two replies so characters can react.
+- **Overdue:** with Phone-ST's story date available, open tasks past their due date (plus grace days) are failed automatically. Deadlines pause while the character is on leave.
+- **Penalty for a failed task** (all adjustable in the settings): promotion progress lost, stress added, satisfaction lost, and an optional fine as a percentage of the task pay.
+- **Promotion:** each job has a progress meter. Completed tasks fill it, failures drain it. At 100% a notification appears and the model is told a promotion is available. Promote from the panel (new title and raise %) or let the model do it with `[job:promoted|…]`.
+
+Limits: if you swipe or regenerate a reply, the changes from the discarded version are not undone, so adjust by hand if needed. Weaker models may forget to add tags; the panel always works by hand.
 
 ## On/off and floating button
 

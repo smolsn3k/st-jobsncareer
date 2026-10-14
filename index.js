@@ -52,6 +52,14 @@ const I18N = {
         s_global: 'General', s_ai: 'AI & prompt', s_phone: 'Phone-ST',
         ps_all: 'Phone-ST sync (everything)', ps_bank: 'Bank (balance, currency, deposits)', ps_cal: 'Calendar (time off)', ps_contacts: 'Contacts (link NPCs)', ps_date: 'Story date',
         phoneOff: 'Phone sync is off: earnings are tracked here only.', bankOff: 'Bank sync is off: earnings are tracked here only.', phoneTip: 'Phone-ST sync on/off',
+        s_track: 'Tracking & penalties', s_tags: 'Track job events from the chat (hidden tags)', s_tagsHint: 'The model adds hidden tags like [job:task|…] at the end of its replies. The extension applies them and removes them from the message. Cheaper than scanning the chat.',
+        s_promoDone: 'Promotion progress per completed task (%)', s_promoRaise: 'Default raise on promotion (%)', s_autoFail: 'Auto-fail overdue tasks', s_grace: 'Grace days after the due date',
+        s_graceHint: 'Overdue detection needs the Phone-ST story date (Phone sync → Story date).', pen: 'Penalty for a failed task', pen_promo: 'Promotion progress lost (%)', pen_stress: 'Stress added', pen_sat: 'Satisfaction lost', pen_fine: 'Fine (% of the task pay)',
+        s_defReduced: 'Default reduced pay % (new jobs)', reducedHint: 'Share of normal pay received while on a leave type that has "Reduced pay" ticked. Unticked leave types pay in full; unpaid leave pays nothing. Used by "Pay one period".',
+        slidersHint: "Set by hand, or updated by hidden tags in the character's replies. The model sees the values.",
+        sec_promo: 'Promotion', promoEnabled: 'Promotion track', promoMeter: 'Promotion progress', promoLevel: 'Level', promoRaise: 'Raise on promotion (%)', promoTitle: 'New title (optional)', promote: 'Promote',
+        promoAvail: 'Promotion available', promoHint: 'Fills when tasks are completed and drops when they fail. At 100% a promotion becomes available and the model is told.', promoDone: 'Promoted',
+        recent: 'Recent changes', restore: 'Restore', taskFailedMsg: 'Task failed', overdue: 'overdue', log_fail: 'failed', log_task: 'task added', log_done: 'done', log_cancel: 'cancelled', log_stress: 'stress', log_sat: 'satisfaction', log_promo: 'promotion progress',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -94,6 +102,14 @@ const I18N = {
         s_global: 'Основное', s_ai: 'ИИ и промпт', s_phone: 'Phone-ST',
         ps_all: 'Синхронизация с Phone-ST (всё)', ps_bank: 'Банк (баланс, валюта, зачисления)', ps_cal: 'Календарь (отпуска)', ps_contacts: 'Контакты (привязка NPC)', ps_date: 'Сюжетная дата',
         phoneOff: 'Синхронизация с телефоном выключена: заработок считается только здесь.', bankOff: 'Синхронизация банка выключена: заработок считается только здесь.', phoneTip: 'Синхронизация с Phone-ST вкл/выкл',
+        s_track: 'Отслеживание и штрафы', s_tags: 'Отслеживать рабочие события из чата (скрытые теги)', s_tagsHint: 'Модель добавляет в конец ответа скрытые теги вроде [job:task|…]. Расширение применяет их и удаляет из сообщения. Дешевле, чем сканировать чат.',
+        s_promoDone: 'Прогресс повышения за выполненное задание (%)', s_promoRaise: 'Прибавка к зарплате при повышении по умолчанию (%)', s_autoFail: 'Автоматически проваливать просроченные задания', s_grace: 'Дней отсрочки после срока',
+        s_graceHint: 'Для просрочки нужна сюжетная дата Phone-ST (синхронизация → сюжетная дата).', pen: 'Штраф за проваленное задание', pen_promo: 'Потеря прогресса повышения (%)', pen_stress: 'Прибавка стресса', pen_sat: 'Потеря удовлетворённости', pen_fine: 'Штраф (% от оплаты задания)',
+        s_defReduced: 'Сниженная оплата по умолчанию, % (для новых работ)', reducedHint: 'Какую долю обычной оплаты персонаж получает во время отпуска, у которого отмечено «Сниженная оплата». Без отметки отпуск оплачивается полностью, без содержания — не оплачивается. Используется кнопкой «Выплатить период».',
+        slidersHint: 'Задаются вручную или обновляются скрытыми тегами в ответах персонажа. Модель видит значения.',
+        sec_promo: 'Повышение', promoEnabled: 'Карьерный рост', promoMeter: 'Прогресс повышения', promoLevel: 'Уровень', promoRaise: 'Прибавка при повышении (%)', promoTitle: 'Новая должность (необязательно)', promote: 'Повысить',
+        promoAvail: 'Повышение доступно', promoHint: 'Растёт при выполнении заданий и падает при провале. На 100% повышение становится доступным, и модель об этом узнаёт.', promoDone: 'Повышен',
+        recent: 'Последние изменения', restore: 'Вернуть', taskFailedMsg: 'Задание провалено', overdue: 'просрочено', log_fail: 'провалено', log_task: 'новое задание', log_done: 'выполнено', log_cancel: 'отменено', log_stress: 'стресс', log_sat: 'удовлетворённость', log_promo: 'прогресс повышения',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -116,6 +132,12 @@ const DEFAULTS = {
     enabled: true,
     showFab: true,
     phone: { all: true, bank: true, calendar: true, contacts: true, storyDate: true },
+    tags: true,
+    promoDone: 10,
+    promoRaise: 10,
+    autoFail: true,
+    overdueGrace: 0,
+    penalty: { promo: 15, stress: 10, satisfaction: 10, finePct: 0 },
     lang: 'auto',
     adult: false,
     apiProfile: '',
@@ -144,7 +166,8 @@ function S() {
 // Global settings live in extension_settings; everything else (people, jobs, NPCs, leave, tasks...) is stored per chat.
 function D() {
     const md = getContext().chatMetadata;
-    if (!md[MODULE]) md[MODULE] = { people: {} };
+    if (!md[MODULE]) md[MODULE] = { people: {}, log: [] };
+    if (!md[MODULE].log) md[MODULE].log = [];
     if (!md[MODULE].people) md[MODULE].people = {};
     return md[MODULE];
 }
@@ -201,6 +224,7 @@ function newJob(p = {}) {
         salary: { amount: num(p.amount), currency: p.currency || '$', period: p.period || 'month', rateType: p.rateType || 'hour', totalEarned: 0 },
         leave: newLeave(p.vacationDays != null && p.vacationDays !== '' ? num(p.vacationDays) : 14), tasks: [], awareness: { mode: 'everyone', who: [] },
         commute: '', stress: 50, satisfaction: 50, coworkers: [], summary: '', description: p.description || '',
+        reducedPct: S().reducedPct, promo: { enabled: (p.type || 'standard') !== 'freelance', meter: 0, level: 1, raise: S().promoRaise },
     };
     return j;
 }
@@ -229,6 +253,9 @@ function ensurePeople() {
             if (!j.leave) j.leave = newLeave();
             if (!j.awareness) j.awareness = { mode: 'everyone', who: [] };
             if (j.insurance === undefined) j.insurance = false;
+            if (j.reducedPct === undefined) j.reducedPct = S().reducedPct;
+            if (!j.promo) j.promo = { enabled: j.type !== 'freelance', meter: 0, level: 1, raise: S().promoRaise };
+            for (const k of j.tasks) { if (k.show === undefined) k.show = 0; if (k.penalized === undefined) k.penalized = false; }
             j.coworkers = (j.coworkers || []).filter((id) => P[id]);
             for (const e of j.leave.entries) { if (e.active === undefined) e.active = !e.end && !e.planned; if (e.calId === undefined) e.calId = ''; }
         }
@@ -266,7 +293,7 @@ function leaveFactor(j) {
     if (!isOnLeave(j)) return 1;
     const type = STATE_LEAVE[j.state];
     if (type === 'unpaid') return 0;
-    return j.leave.reduced[type] ? (Number(S().reducedPct) || 0) / 100 : 1;
+    return j.leave.reduced[type] ? (Number(j.reducedPct ?? S().reducedPct) || 0) / 100 : 1;
 }
 
 /* ------------------------------------------------------------------ */
@@ -428,6 +455,217 @@ async function credit(p, j, amount, reason) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Tasks, penalties, promotion and hidden-tag tracking                 */
+/* ------------------------------------------------------------------ */
+const clamp100 = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+const norm = (x) => String(x || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+function similar(a, b) {
+    a = norm(a); b = norm(b);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.includes(b) || b.includes(a)) return 0.9;
+    const A = new Set(a.split(' ')), B = new Set(b.split(' '));
+    let hit = 0;
+    for (const w of A) if (B.has(w)) hit++;
+    return hit / Math.max(A.size, B.size);
+}
+
+function addLog(txt) {
+    const L = D().log;
+    L.unshift({ at: Date.now(), txt });
+    if (L.length > 40) L.length = 40;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function addDays(d, n) { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+const isOpen = (k) => k.status === 'pending' || k.status === 'active';
+const isOverdue = (k) => !!(rpDate && DATE_RE.test(k.due || '') && isOpen(k) && addDays(k.due, Number(S().overdueGrace) || 0) < rpDate);
+
+function bumpPromo(p, j, delta, why) {
+    if (!j.promo?.enabled || !delta) return;
+    const was = j.promo.meter >= 100;
+    j.promo.meter = clamp100((Number(j.promo.meter) || 0) + delta);
+    if (!was && j.promo.meter >= 100) {
+        toastr.success(`${p.name}: ${t('promoAvail')} (${j.title})`);
+        notify(t('promoAvail'), `${p.name} — ${j.title}`);
+        addLog(`⭐ ${p.name} · ${j.title}: ${t('promoAvail')}${why ? ' (' + why + ')' : ''}`);
+    }
+}
+
+async function applyPenalty(p, j, k, why) {
+    if (k.penalized) return;
+    k.penalized = true;
+    const pen = S().penalty;
+    bumpPromo(p, j, -(Number(pen.promo) || 0));
+    j.stress = clamp100((Number(j.stress) || 0) + (Number(pen.stress) || 0));
+    j.satisfaction = clamp100((Number(j.satisfaction) || 0) - (Number(pen.satisfaction) || 0));
+    let fine = 0;
+    const pct = Number(pen.finePct) || 0;
+    if (pct > 0 && Number(k.pay) > 0) {
+        fine = Math.round(Number(k.pay) * pct) / 100;
+        j.salary.totalEarned = Math.max(0, Math.round(((Number(j.salary.totalEarned) || 0) - fine) * 100) / 100);
+        if (p.kind === 'user' && bank.installed) { await PhoneBridge.addMoney(-fine, `Fine: ${k.desc}`); await refreshBank(); }
+    }
+    toastr.warning(`${t('taskFailedMsg')}: ${k.desc} (${p.name})${fine ? ' −' + fmt(fine, effCur(p, j)) : ''}`);
+    addLog(`⚠ ${p.name} · ${j.title}: "${k.desc}" ${t('log_fail')}${why ? ' (' + why + ')' : ''}`);
+}
+
+// Single place that reacts to a task changing status (panel, hidden tags, overdue check)
+async function taskStatusChanged(p, j, k, prev, why) {
+    if (k.status === prev) return;
+    k.show = (k.status === 'done' || k.status === 'failed') ? 2 : 0;
+    notify(t('evTask'), `${j.title}: ${k.desc} → ${t('ts_' + k.status)}`);
+    if (k.status === 'done') {
+        bumpPromo(p, j, Number(S().promoDone) || 0, `"${k.desc}"`);
+        if (!k.paid && Number(k.pay) > 0) { k.paid = true; await credit(p, j, k.pay, `Task: ${k.desc}`); }
+    } else if (k.status === 'failed') await applyPenalty(p, j, k, why);
+}
+
+async function checkOverdue() {
+    if (!S().enabled || !S().autoFail || !rpDate || !hasChat()) return false;
+    let changed = false;
+    for (const p of Object.values(D().people)) for (const j of p.jobs) {
+        if (isOnLeave(j)) continue; // deadlines pause during leave
+        for (const k of j.tasks) {
+            if (!isOverdue(k)) continue;
+            const prev = k.status;
+            k.status = 'failed'; changed = true;
+            await taskStatusChanged(p, j, k, prev, t('overdue'));
+        }
+    }
+    if (changed) save();
+    return changed;
+}
+
+async function promote(p, j, title, raise) {
+    const r = Number(raise) || 0;
+    const from = j.title;
+    j.promo.level = (Number(j.promo.level) || 1) + 1;
+    j.promo.meter = 0;
+    if (title) j.title = title;
+    if (r > 0) j.salary.amount = Math.round(Number(j.salary.amount) * (1 + r / 100) * 100) / 100;
+    toastr.success(`${p.name}: ${t('promoDone')} — ${j.title}${r ? ' (+' + r + '%)' : ''}`);
+    notify(t('promoDone'), `${p.name} — ${j.title}`);
+    addLog(`⭐ ${p.name}: ${from} → ${j.title}${r ? ' (+' + r + '%)' : ''}`);
+}
+
+/* ---- hidden tags: [job:kind|Person|Job|arg|arg|arg] ---- */
+const TAG_RE = /\[job:\s*([a-z]+)\s*\|([^\]\n]*)\]/gi;
+
+function findPerson(name) {
+    const n = norm(name);
+    if (!n) return null;
+    const list = visiblePeople();
+    return list.find((p) => norm(p.name) === n) || list.find((p) => norm(p.name).includes(n) || n.includes(norm(p.name))) || null;
+}
+function findJobFor(p, title) {
+    const jobs = p.jobs.filter((j) => jobVisibleFor(p, j) && j.state !== 'fired');
+    if (!jobs.length) return null;
+    if (!title) return jobs.length === 1 ? jobs[0] : null;
+    return jobs.find((j) => norm(j.title) === norm(title))
+        || jobs.map((j) => ({ j, sc: Math.max(similar(j.title, title), similar(j.employer, title)) })).filter((x) => x.sc >= 0.5).sort((a, b) => b.sc - a.sc)[0]?.j
+        || (jobs.length === 1 ? jobs[0] : null);
+}
+function findTask(j, text, statuses) {
+    let best = null, score = 0.49;
+    for (const k of j.tasks) {
+        if (!statuses.includes(k.status)) continue;
+        const sc = similar(k.desc, text);
+        if (sc > score) { best = k; score = sc; }
+    }
+    return best;
+}
+function parseDelta(v) {
+    const m = String(v || '').trim().match(/^([=+\-−]?)\s*(\d+(?:\.\d+)?)/);
+    if (!m) return null;
+    const n = Number(m[2]);
+    return m[1] === '=' ? { abs: n } : { delta: Math.max(-30, Math.min(30, (m[1] === '-' || m[1] === '−') ? -n : n)) };
+}
+
+async function applyOp({ kind, args }) {
+    const [who, jobT, a, b, c] = args;
+    const p = findPerson(who);
+    const j = p && findJobFor(p, jobT);
+    if (!p || !j) return;
+    const tag = `${p.name} · ${j.title}`;
+    const OPEN = ['pending', 'active'];
+    switch (kind) {
+        case 'task': {
+            if (!a || isOnLeave(j) || j.tasks.length >= 30) return;
+            if (findTask(j, a, OPEN) && similar(findTask(j, a, OPEN).desc, a) >= 0.8) return; // duplicate
+            j.tasks.push({ id: uid(), desc: a.slice(0, 200), due: DATE_RE.test(b || '') ? b : '', pay: num(c), status: 'active', paid: false, show: 0, penalized: false });
+            addLog(`📋 ${tag}: ${t('log_task')} "${a}"`);
+            return;
+        }
+        case 'done': case 'fail': case 'cancel': {
+            const k = findTask(j, a, OPEN);
+            if (!k) return;
+            const prev = k.status;
+            k.status = kind === 'done' ? 'done' : kind === 'fail' ? 'failed' : 'cancelled';
+            addLog(`📋 ${tag}: "${k.desc}" ${t(kind === 'done' ? 'log_done' : kind === 'fail' ? 'log_fail' : 'log_cancel')}`);
+            await taskStatusChanged(p, j, k, prev, 'chat');
+            return;
+        }
+        case 'stress': case 'sat': {
+            const d = parseDelta(a);
+            if (!d) return;
+            const key = kind === 'stress' ? 'stress' : 'satisfaction';
+            const before = Number(j[key]) || 0;
+            j[key] = clamp100('abs' in d ? d.abs : before + d.delta);
+            addLog(`📊 ${tag}: ${t(kind === 'stress' ? 'log_stress' : 'log_sat')} ${before} → ${j[key]}`);
+            return;
+        }
+        case 'promo': {
+            const d = parseDelta(a);
+            if (!d || !j.promo?.enabled) return;
+            const before = j.promo.meter;
+            if ('abs' in d) bumpPromo(p, j, clamp100(d.abs) - before, 'chat'); else bumpPromo(p, j, d.delta, 'chat');
+            addLog(`⭐ ${tag}: ${t('log_promo')} ${before}% → ${j.promo.meter}%`);
+            return;
+        }
+        case 'promoted': {
+            if (!j.promo?.enabled) return;
+            await promote(p, j, a || '', b ? num(b) : j.promo.raise);
+            return;
+        }
+        default:
+    }
+}
+
+// Applies and strips the tags of a freshly received character message
+async function processMessage(id) {
+    const s = S();
+    if (!s.enabled || !s.tags || !hasChat()) return;
+    const ctx = getContext();
+    const msg = ctx.chat?.[id];
+    if (!msg || msg.is_user || typeof msg.mes !== 'string') return;
+    // outcomes stay visible to the model for two replies
+    let touched = false;
+    for (const p of Object.values(D().people)) for (const j of p.jobs) for (const k of j.tasks) if (k.show > 0) { k.show--; touched = true; }
+    const ops = [...msg.mes.matchAll(TAG_RE)].map((m) => ({ kind: m[1].toLowerCase(), args: m[2].split('|').map((x) => x.trim()) }));
+    if (!ops.length) { if (touched) save(); return; }
+    for (const op of ops) { try { await applyOp(op); } catch (e) { console.warn('[Jobs] tag failed', op, e); } }
+    const clean = msg.mes.replace(TAG_RE, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+    msg.mes = clean;
+    if (Array.isArray(msg.swipes) && msg.swipes[msg.swipe_id] != null) msg.swipes[msg.swipe_id] = clean;
+    try { ctx.updateMessageBlock?.(id, msg); } catch { /* ignore */ }
+    try { await ctx.saveChat?.(); } catch { /* ignore */ }
+    save(); applyPrompt();
+}
+
+function trackingInstructions() {
+    const s = S();
+    const anyPromo = visiblePeople().some((p) => p.jobs.some((j) => j.promo?.enabled && jobVisibleFor(p, j)));
+    const L = [`[Job tracking: when job events happen in your reply, add hidden tags on their own lines at the very end of the reply. They are stripped automatically, so never mention or explain them. Use the exact names and job titles above${rpDate ? `. Story date: ${rpDate}; write dates as YYYY-MM-DD` : ''}.`,
+        '[job:task|Person|Job|task text|due date|pay] a new work task is given',
+        '[job:done|Person|Job|task text]  [job:fail|Person|Job|task text]  [job:cancel|Person|Job|task text]'];
+    if (s.opt.sliders) L.push('[job:stress|Person|Job|+N or -N]  [job:sat|Person|Job|+N or -N] (0-100 scale, small steps)');
+    if (anyPromo) L.push('[job:promo|Person|Job|+N or -N] progress toward a promotion;  [job:promoted|Person|Job|new title|raise %] only when a promotion really happens');
+    L.push('Only tag real changes.]');
+    return L.join('\n');
+}
+
+/* ------------------------------------------------------------------ */
 /* LLM helper                                                          */
 /* ------------------------------------------------------------------ */
 function profiles() { return extension_settings.connectionManager?.profiles || []; }
@@ -532,9 +770,12 @@ function buildPrompt() {
                 if (child) l += ` Parental leave for child ${child.name}.`;
                 if (act?.reason && j.state === 'sick') l += ` Reason: ${act.reason}.`;
             } else {
-                const open = j.tasks.filter((x) => x.status === 'pending' || x.status === 'active');
-                if (open.length) l += ` Tasks: ${open.map((x) => x.desc + (x.due ? ` (due ${x.due})` : '') + (x.pay ? ` [pay ${x.pay}]` : '')).join('; ')}.`;
+                const open = j.tasks.filter(isOpen);
+                if (open.length) l += ` Tasks: ${open.map((x) => `${x.desc}${x.due ? ` (due ${x.due}${isOverdue(x) ? ', OVERDUE' : ''})` : ''}${x.pay ? ` [pay ${x.pay}]` : ''}`).join('; ')}.`;
             }
+            const recent = j.tasks.filter((x) => x.show > 0 && (x.status === 'done' || x.status === 'failed'));
+            if (recent.length) l += ` Recent: ${recent.map((x) => `"${x.desc}" ${x.status === 'done' ? 'completed' : 'FAILED (consequences apply)'}`).join('; ')}.`;
+            if (j.promo?.enabled) l += j.promo.meter >= 100 ? ' PROMOTION AVAILABLE (the employer may offer it when the story fits).' : ` Promotion progress ${j.promo.meter}%.`;
             const plan = j.leave.entries.filter((e) => e.planned);
             if (plan.length) l += ` Planned time off: ${plan.map((e) => `${t('l_' + e.type).toLowerCase()} ${e.start || '?'}–${e.end || '?'}`).join('; ')}.`;
             if (s.opt.sliders) l += ` Stress ${j.stress}/100, satisfaction ${j.satisfaction}/100.`;
@@ -548,6 +789,7 @@ function buildPrompt() {
     let out = `[Jobs & career info (reference). A job may only be mentioned by or to characters who know about it (see "Known by"). Characters on leave get no work tasks. Write job-related text in the chat's language.]`;
     if (resumes.length) out += `\nResumes:\n${resumes.join('\n')}`;
     if (lines.length) out += `\nJobs:\n${lines.join('\n')}`;
+    if (s.tags && lines.length) out += `\n${trackingInstructions()}`;
     if (showBank) {
         out += `\n${P.user.name}'s phone bank balance: ${fmt(bank.balance, bank.currency || '')}${bank.balance < 0 ? ' (negative, in debt)' : ''}.`;
     }
@@ -565,7 +807,7 @@ function applyPrompt() {
 /* ------------------------------------------------------------------ */
 /* UI state & rendering                                                */
 /* ------------------------------------------------------------------ */
-const ui = { open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
+const ui = { open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
 
 function opacity() { const v = parseFloat(localStorage.getItem(LS_OPACITY)); return Number.isNaN(v) ? 1 : v; }
 
@@ -612,6 +854,7 @@ function renderLeave(j) {
         <td><input type="checkbox" data-j="${j.id}" data-f="leave.reduced.${ty}" data-c="1" ${L.reduced[ty] ? 'checked' : ''}></td></tr>`;
     }
     h += '</table></div>';
+    h += `<div class="jx-grid">${fld(j, 'reducedPct', t('reducedPct'), 'num')}</div><div class="jx-hint">${t('reducedHint')}</div>`;
     const kids = Object.values(D().people).filter((p) => p.kind === 'npc');
     h += `<div class="jx-st">${t('planVacation')}</div><div class="jx-lf">
       <select class="jx-l-type">${LEAVE_TYPES.map((x) => `<option value="${x}">${esc(t('l_' + x))}</option>`).join('')}</select>
@@ -644,8 +887,19 @@ function renderTasks(j) {
         <input type="date" data-j="${j.id}" data-f="tasks.${i}.due" value="${esc(k.due)}" title="${t('due')}">
         <input type="number" step="any" data-j="${j.id}" data-f="tasks.${i}.pay" data-n="1" value="${esc(k.pay)}" title="${t('pay')}" style="width:80px">
         <select data-j="${j.id}" data-f="tasks.${i}.status">${opts(TASK_STATUS, k.status, 'ts_')}</select>
-        ${k.paid ? chip(t('paid'), 'jx-c-ok') : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">×</button></div>`;
+        ${k.paid ? chip(t('paid'), 'jx-c-ok') : ''}${isOverdue(k) ? chip('⏰ ' + t('overdue'), 'jx-c-warn') : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">×</button></div>`;
     });
+    return h;
+}
+
+function renderPromo(p, j) {
+    const pr = j.promo;
+    let h = fld(j, 'promo.enabled', t('promoEnabled'), 'check');
+    if (!pr.enabled) return h;
+    h += fld(j, 'promo.meter', t('promoMeter'), 'range');
+    h += `<div class="jx-hint">${t('promoHint')}</div>`;
+    h += `<div class="jx-grid">${fld(j, 'promo.raise', t('promoRaise'), 'num')}<label class="jx-f"><span>${t('promoLevel')}</span><input disabled value="${pr.level}"></label></div>`;
+    h += `<div class="jx-row"><input type="text" class="jx-ptitle" placeholder="${esc(t('promoTitle'))}"><button class="menu_button ${pr.meter >= 100 ? 'jx-hot' : ''}" data-a="promote" data-j="${j.id}">⭐ ${t('promote')}</button></div>`;
     return h;
 }
 
@@ -676,7 +930,8 @@ function renderJob(p, j) {
     let h = `<div class="jx-job jx-s-${j.state}" data-job="${j.id}"><div class="jx-jh" data-a="toggle" data-j="${j.id}">
       <div class="jx-jt"><div class="jx-name">${esc(j.title || '—')}</div><div class="jx-emp">${esc(j.employer || '')}${j.category ? ' · ' + esc(j.category) : ''}</div></div>
       <div class="jx-chips">${j.salary.amount ? chip('💰 ' + esc(salaryLine(p, j)), 'jx-c-pay') : chip(t('setSalary'), 'jx-c-warn')}
-      ${chip('🏖 ' + vac)}${j.insurance ? chip('🛡') : ''}${j.type === 'adult' ? chip('18+') : ''}${chip(t('st_' + j.state), 'jx-badge jx-b-' + j.state)}</div></div>`;
+      ${chip('🏖 ' + vac)}${j.insurance ? chip('🛡') : ''}${j.type === 'adult' ? chip('18+') : ''}${j.promo?.enabled ? chip(j.promo.meter >= 100 ? '⭐ !' : '⭐ ' + j.promo.meter + '%', j.promo.meter >= 100 ? 'jx-c-ok' : '') : ''}${chip(t('st_' + j.state), 'jx-badge jx-b-' + j.state)}</div>
+      ${j.promo?.enabled ? `<div class="jx-meter ${j.promo.meter >= 100 ? 'jx-full' : ''}" title="${esc(t('promoMeter'))}"><i style="width:${j.promo.meter}%"></i></div>` : ''}</div>`;
     if (isOnLeave(j) && !open) h += `<div class="jx-subline">${t('st_' + j.state)} · ${t('left')}: ${leftDays(j, STATE_LEAVE[j.state])} ${t('days')}</div>`;
     if (open) {
         const paySec = `<div class="jx-grid">${fld(j, 'salary.amount', t('amount'), 'num')}
@@ -694,11 +949,12 @@ function renderJob(p, j) {
         h += sec(j, 'pay', '💰', t('sec_pay'), paySec);
         h += sec(j, 'leave', '🏖', t('sec_leave'), renderLeave(j), j.leave.entries.some((e) => e.planned) ? '📅' : '');
         h += sec(j, 'tasks', '📋', t('sec_tasks'), renderTasks(j), j.tasks.length ? String(j.tasks.length) : '');
+        h += sec(j, 'promo', '⭐', t('sec_promo'), renderPromo(p, j), j.promo.enabled ? (j.promo.meter >= 100 ? '!' : j.promo.meter + '%') : '');
         h += sec(j, 'aware', '👁', t('sec_aware'), renderAwareness(p, j));
         if (s.opt.coworkers) h += sec(j, 'cow', '🤝', t('coworkers'), renderCoworkers(p, j), j.coworkers.length ? String(j.coworkers.length) : '');
         let more = '';
         if (s.opt.commute) more += fld(j, 'commute', t('commute'));
-        if (s.opt.sliders) more += fld(j, 'stress', t('stress'), 'range') + fld(j, 'satisfaction', t('satisfaction'), 'range');
+        if (s.opt.sliders) more += fld(j, 'stress', t('stress'), 'range') + fld(j, 'satisfaction', t('satisfaction'), 'range') + `<div class="jx-hint">${t('slidersHint')}</div>`;
         if (s.opt.autosummary) more += fld(j, 'summary', t('summary'), 'area') + `<button class="menu_button" data-a="summarize" data-j="${j.id}">${t('summarize')}</button>`;
         if (more) h += sec(j, 'more', '✨', t('sec_more'), more);
         h += `<div class="jx-row jx-end">${s.opt.history ? `<button class="menu_button" data-a="archiveJob" data-j="${j.id}">📦 ${t('archive')}</button>` : ''}<button class="menu_button" data-a="delJob" data-j="${j.id}">🗑 ${t('del')}</button></div></div>`;
@@ -782,7 +1038,12 @@ function renderPanel() {
     const jobs = p.jobs.filter((j) => jobVisibleFor(p, j));
     h += `<div class="jx-st">💼 ${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-empty">${t('noJobs')}</div>`);
     if (s.opt.history && p.history.length) {
-        h += `<div class="jx-st">📦 ${t('history')}</div>` + p.history.map((j) => `<div class="jx-hist"><b>${esc(j.title)}</b> ${j.employer ? '· ' + esc(j.employer) : ''}<span class="jx-dim"> · ${esc(fmt(j.salary.totalEarned, j.salary.currency))}</span></div>`).join('');
+        h += `<div class="jx-st">📦 ${t('history')}</div>` + p.history.map((j, i) => `<div class="jx-hist"><div><b>${esc(j.title)}</b> ${j.employer ? '· ' + esc(j.employer) : ''}<span class="jx-dim"> · ${esc(fmt(j.salary.totalEarned, j.salary.currency))}</span></div><div class="jx-ebtn"><button class="menu_button" data-a="restoreJob" data-i="${i}">↩ ${t('restore')}</button><button class="menu_button" data-a="delHist" data-i="${i}">×</button></div></div>`).join('');
+    }
+    const log = D().log || [];
+    if (log.length) {
+        h += `<div class="jx-sh" data-a="logToggle"><span>🧾 ${t('recent')}</span><span class="jx-chev">${ui.logOpen ? '▾' : '▸'}</span></div>`;
+        if (ui.logOpen) h += log.slice(0, 20).map((x) => `<div class="jx-log"><span class="jx-dim">${esc(new Date(x.at).toLocaleString())}</span> ${esc(x.txt)}</div>`).join('');
     }
     body.innerHTML = h;
     body.scrollTop = scroll;
@@ -795,10 +1056,11 @@ function renderSettings() {
     if (!el) return;
     const s = S();
     const chk = (path, label, dis = false) => `<label class="checkbox_label"><input type="checkbox" data-s="${path}" data-c="1" ${getByPath(s, path) ? 'checked' : ''} ${dis ? 'disabled' : ''}><span>${esc(label)}</span></label>`;
+    const numf = (path, label) => `<label>${esc(label)} <input type="number" min="0" data-s="${path}" data-n="1" class="text_pole" value="${getByPath(s, path)}"></label>`;
     const profOpts = (cur) => `<option value="">${t('s_default')}</option>` + profiles().map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
     el.innerHTML = `<h4>${t('s_global')}</h4>${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
-      <label>${t('reducedPct')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label>
+      <label>${t('s_defReduced')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label><small>${t('reducedHint')}</small>
       <h4>${t('s_ai')}</h4>
       <label>${t('s_api')} <select data-s="apiProfile" class="text_pole">${profOpts(s.apiProfile)}</select></label>
       <label>${t('s_fallback')} <select data-s="fallbackProfile" class="text_pole">${profOpts(s.fallbackProfile)}</select></label>
@@ -808,6 +1070,10 @@ function renderSettings() {
       <label>${t('s_phoneKey')} <input type="text" data-s="phoneKey" class="text_pole" value="${esc(s.phoneKey)}"></label>
       <div class="menu_button" id="jx_diag_btn">${t('diag')}</div>
       <textarea id="jx_diag" class="text_pole" rows="8" readonly hidden placeholder="${esc(t('diagHint'))}"></textarea>
+      <h4>${t('s_track')}</h4>${chk('tags', t('s_tags'))}<small>${t('s_tagsHint')}</small>
+      ${numf('promoDone', t('s_promoDone'))}${numf('promoRaise', t('s_promoRaise'))}
+      ${chk('autoFail', t('s_autoFail'))}${numf('overdueGrace', t('s_grace'))}<small>${t('s_graceHint')}</small>
+      <h4>${t('pen')}</h4>${numf('penalty.promo', t('pen_promo'))}${numf('penalty.stress', t('pen_stress'))}${numf('penalty.satisfaction', t('pen_sat'))}${numf('penalty.finePct', t('pen_fine'))}
       <h4>${t('s_optional')}</h4>
       ${Object.keys(DEFAULTS.opt).map((k) => chk('opt.' + k, t('o_' + k))).join('')}
       <div class="menu_button" id="jx_open_btn">${t('open')}</div>`;
@@ -864,11 +1130,7 @@ async function onChange(e) {
     const prev = getByPath(j, path);
     setByPath(j, path, val);
     const m = path.match(/^tasks\.(\d+)\.status$/);
-    if (m) {
-        const k = j.tasks[+m[1]];
-        notify(t('evTask'), `${j.title}: ${k.desc} → ${t('ts_' + k.status)}`);
-        if (val === 'done' && !k.paid && Number(k.pay) > 0) { k.paid = true; await credit(p, j, k.pay, `Task: ${k.desc}`); }
-    }
+    if (m) await taskStatusChanged(p, j, j.tasks[+m[1]], prev);
     if (path === 'state' && prev !== val && isOnLeave(j)) notify(t('evLeave'), `${p.name}: ${t('st_' + val)}`);
     if (path === 'type' && val === 'freelance') j.salary.period = 'project';
     return afterChange();
@@ -931,6 +1193,14 @@ async function onClick(e) {
             const nj = newJob({ currency: worldCur() }); p.jobs.push(nj); ui.exp[nj.id] = true; return afterChange();
         }
         case 'delJob': if (confirm(t('confirm'))) { jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange(); } return;
+        case 'promote': {
+            const title = el.closest('.jx-row').querySelector('.jx-ptitle').value.trim();
+            await promote(jp, j, title, j.promo.raise);
+            return afterChange();
+        }
+        case 'restoreJob': { const h = p.history.splice(+el.dataset.i, 1)[0]; if (h) p.jobs.push(h); return afterChange(); }
+        case 'delHist': if (confirm(t('confirm'))) { p.history.splice(+el.dataset.i, 1); return afterChange(); } return;
+        case 'logToggle': ui.logOpen = !ui.logOpen; return renderPanel();
         case 'archiveJob': jp.history.push(clone(j)); jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange();
         case 'search': case 'scan': {
             const kind = el.dataset.k;
@@ -961,7 +1231,7 @@ async function onClick(e) {
         }
         case 'addTask':
             if (isOnLeave(j)) return toastr.warning(t('noLeaveTasks'));
-            j.tasks.push({ id: uid(), desc: '', due: '', pay: 0, status: 'pending', paid: false }); return afterChange();
+            j.tasks.push({ id: uid(), desc: '', due: '', pay: 0, status: 'pending', paid: false, show: 0, penalized: false }); return afterChange();
         case 'delTask': j.tasks.splice(+el.dataset.i, 1); return afterChange();
         case 'payPeriod': {
             await credit(jp, j, (Number(j.salary.amount) || 0) * leaveFactor(j), 'Salary');
@@ -1040,6 +1310,7 @@ async function openPanel() {
     document.getElementById('jx_panel').classList.add('jx-open');
     if (S().enabled) {
         await refreshBank();
+        if (hasChat()) { ensurePeople(); await checkOverdue(); }
         ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];
     }
     renderPanel();
@@ -1123,9 +1394,16 @@ jQuery(async () => {
     rerenderAll();
     applyPrompt();
     const { eventSource, event_types } = ST;
-    eventSource.on(event_types.CHAT_CHANGED, async () => { ui.selected = 'user'; ui.ideas = []; ui.exp = {}; if (hasChat()) ensurePeople(); await refreshBank(); applyPrompt(); rerenderAll(); });
+    eventSource.on(event_types.CHAT_CHANGED, async () => { ui.selected = 'user'; ui.ideas = []; ui.exp = {}; if (hasChat()) ensurePeople(); await refreshBank(); await checkOverdue(); applyPrompt(); rerenderAll(); });
     const genEvt = event_types.GENERATION_AFTER_COMMANDS || event_types.GENERATION_STARTED;
-    eventSource.on(genEvt, async () => { await refreshBank(); applyPrompt(); });
-    eventSource.on(event_types.MESSAGE_RECEIVED, async () => { if (ui.open) { await refreshBank(); renderPanel(); } });
+    eventSource.on(genEvt, async () => { await refreshBank(); await checkOverdue(); applyPrompt(); });
+    eventSource.on(event_types.MESSAGE_RECEIVED, async (id) => {
+        try {
+            const idx = typeof id === 'number' ? id : (getContext().chat?.length || 1) - 1;
+            await processMessage(idx);
+            await refreshBank(); await checkOverdue(); applyPrompt();
+        } catch (e) { console.warn('[Jobs] message handling failed', e); }
+        if (ui.open) renderPanel();
+    });
     console.log('[Jobs & Career] loaded');
 });
