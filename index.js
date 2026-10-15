@@ -5,6 +5,7 @@ import * as ST from '../../../../script.js';
 import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
+const VERSION = '0.2.0';
 const LS_OPACITY = 'jobsext_opacity';
 const LS_FAB = 'jobsext_fab_pos';
 
@@ -76,6 +77,7 @@ const I18N = {
         emoji: 'Emoji',
         settingsTip: 'Settings', back: 'Back',
         resetFab: 'Reset floating button position', fabReset: 'Floating button reset.',
+        s_display: 'Display', dm_auto: 'Auto (popup window on phones)', dm_floating: 'Floating panel', dm_popup: 'Popup window', uiDiag: 'Interface diagnostics', uiDiagHint: 'Copy this and send it to the developer if the panel or button does not show.',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -142,6 +144,7 @@ const I18N = {
         emoji: 'Эмодзи',
         settingsTip: 'Настройки', back: 'Назад',
         resetFab: 'Сбросить положение плавающей кнопки', fabReset: 'Плавающая кнопка сброшена.',
+        s_display: 'Отображение', dm_auto: 'Авто (всплывающее окно на телефонах)', dm_floating: 'Плавающая панель', dm_popup: 'Всплывающее окно', uiDiag: 'Диагностика интерфейса', uiDiagHint: 'Скопируйте и отправьте разработчику, если панель или кнопка не отображаются.',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -163,6 +166,7 @@ const CURRENCIES = ['₽', '$', '€', '£', '¥'];
 const DEFAULTS = {
     enabled: true,
     showFab: true,
+    displayMode: 'auto',
     phone: { all: true, bank: true, calendar: true, contacts: true, storyDate: true },
     tags: true,
     newChatsOff: false,
@@ -1219,7 +1223,10 @@ function settingsHtml(inPanel) {
     const top = inPanel
         ? `<div class="jx-row"><button class="menu_button" data-a="gear">← ${t('back')}</button></div>`
         : `<div class="menu_button" data-a="openPanel">${t('open')}</div>`;
-    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}<div class="menu_button" data-a="resetFab">${t('resetFab')}</div>${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
+    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}<div class="menu_button" data-a="resetFab">${t('resetFab')}</div>
+      <label>${t('s_display')} <select data-s="displayMode" class="text_pole"><option value="auto" ${s.displayMode === 'auto' ? 'selected' : ''}>${t('dm_auto')}</option><option value="floating" ${s.displayMode === 'floating' ? 'selected' : ''}>${t('dm_floating')}</option><option value="popup" ${s.displayMode === 'popup' ? 'selected' : ''}>${t('dm_popup')}</option></select></label>
+      <div class="menu_button" data-a="uiDiag">${t('uiDiag')}</div>
+      <textarea class="text_pole jx-uidiag" rows="10" readonly hidden placeholder="${esc(t('uiDiagHint'))}"></textarea>${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
       <label>${t('s_defReduced')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label><small>${t('reducedHint')}</small>`;
     const ai = `<label>${t('s_api')} <select data-s="apiProfile" class="text_pole">${profOpts(s.apiProfile)}</select></label>
@@ -1504,7 +1511,14 @@ async function onClick(e) {
             if (!s.enabled) s.enabled = true;
             else if (hasChat()) { const d = D(); d.off = !d.off; }
             save(); await refreshBank(); applyPrompt(); rerenderAll(); return;
-        case 'close': ui.open = false; document.getElementById('jx_panel').classList.remove('jx-open'); return;
+        case 'close':
+            if (ui.popup && ui.popupRef) { try { await ui.popupRef.complete(getContext().POPUP_RESULT?.AFFIRMATIVE ?? 1); } catch (e) { console.warn(e); } return; }
+            ui.open = false; showPanel(false); return;
+        case 'uiDiag': {
+            const ta = el.closest('.jx-setbody, #jx_settings_body, #jx_body')?.querySelector('.jx-uidiag');
+            if (ta) { ta.hidden = false; ta.value = uiDiagnostics(); ta.select(); }
+            return;
+        }
         default:
     }
 }
@@ -1534,8 +1548,10 @@ async function openPanel() {
 }
 
 async function openPanelInner() {
+    if (ui.popup) return;
+    if (useWindow() && await openPopup()) return;
     ui.open = true;
-    document.getElementById('jx_panel').classList.add('jx-open');
+    showPanel(true);
     if (isOn()) {
         await refreshBank();
         if (hasChat()) { ensurePeople(); await checkOverdue(); }
@@ -1578,6 +1594,93 @@ function initFab(fab) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Display modes (floating panel / SillyTavern popup) + diagnostics    */
+/* ------------------------------------------------------------------ */
+function useWindow() {
+    const m = S().displayMode;
+    if (m === 'popup') return true;
+    if (m === 'floating') return false;
+    return window.innerWidth <= 800; // auto: phones get the popup window
+}
+
+function showPanel(on) {
+    const panel = document.getElementById('jx_panel');
+    if (!panel) return;
+    panel.classList.toggle('jx-open', on);
+    panel.style.setProperty('display', on ? 'flex' : 'none', 'important');
+}
+
+// Hosts the panel inside one of SillyTavern's own popups, which are always on top and work on phones
+async function openPopup() {
+    const ctx = getContext();
+    const Popup = ctx.Popup, TYPE = ctx.POPUP_TYPE;
+    const panel = document.getElementById('jx_panel');
+    if (typeof Popup !== 'function' || !TYPE || !panel) return false;
+    const holder = document.createElement('div');
+    holder.className = 'jx-popup-holder';
+    panel.classList.add('jx-embedded');
+    holder.appendChild(panel);
+    showPanel(true);
+    ui.popup = true; ui.open = true;
+    let pop;
+    const restore = () => {
+        panel.classList.remove('jx-embedded');
+        document.body.appendChild(panel);
+        showPanel(false);
+        ui.popup = false; ui.open = false; ui.popupRef = null;
+    };
+    try {
+        pop = new Popup(holder, TYPE.TEXT, '', { wide: true, large: true, okButton: t('close'), cancelButton: false, allowVerticalScrolling: false });
+    } catch (e) { console.warn('[Jobs] popup unavailable, using the floating panel', e); restore(); return false; }
+    ui.popupRef = pop;
+    if (isOn()) {
+        await refreshBank();
+        ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];
+        if (hasChat()) { ensurePeople(); await checkOverdue(); }
+    }
+    renderPanel();
+    try { await pop.show(); } finally { restore(); }
+    return true;
+}
+
+function fabDefaults(fab) {
+    const phone = window.innerWidth <= 800;
+    fab.style.left = 'auto'; fab.style.top = 'auto';
+    fab.style.right = phone ? '10px' : '14px';
+    fab.style.bottom = phone ? '120px' : '90px';
+    fab.style.zIndex = '5000';
+}
+
+function describeEl(el) {
+    if (!el) return 'none';
+    return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}`;
+}
+
+function uiDiagnostics() {
+    const ctx = getContext();
+    const L = [`Jobs & Career UI diagnostics v${VERSION}`];
+    const rect = (el) => { if (!el) return 'MISSING'; const r = el.getBoundingClientRect(); return `x${Math.round(r.left)} y${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`; };
+    const panel = document.getElementById('jx_panel'), fab = document.getElementById('jx_fab');
+    L.push(`viewport ${window.innerWidth}x${window.innerHeight}, dpr ${window.devicePixelRatio}, ${navigator.userAgent}`);
+    L.push(`display setting: ${S().displayMode}; popup mode used here: ${useWindow()}; Popup API: ${typeof ctx.Popup}/${!!ctx.POPUP_TYPE}; /jobs registered: ${ui.slashOk}`);
+    if (fab) {
+        const c = getComputedStyle(fab), r = fab.getBoundingClientRect();
+        const top = document.elementFromPoint(Math.min(Math.max(r.left + r.width / 2, 1), window.innerWidth - 1), Math.min(Math.max(r.top + r.height / 2, 1), window.innerHeight - 1));
+        L.push(`fab: ${rect(fab)} display ${c.display} vis ${c.visibility} opacity ${c.opacity} z ${c.zIndex} position ${c.position}; topmost at its centre: ${describeEl(top)}; parent ${describeEl(fab.parentElement)}`);
+    } else L.push('fab: MISSING from the page');
+    if (panel) {
+        const c = getComputedStyle(panel);
+        L.push(`panel: ${rect(panel)} display ${c.display} opacity ${c.opacity} z ${c.zIndex} position ${c.position}; open ${ui.open}; popup ${!!ui.popup}; parent ${describeEl(panel.parentElement)}`);
+    } else L.push('panel: MISSING from the page');
+    L.push(`stylesheet applied: ${fab ? getComputedStyle(fab).borderTopLeftRadius : '?'} (expect 24px or 50%)`);
+    for (const el of [document.documentElement, document.body]) {
+        const c = getComputedStyle(el);
+        L.push(`${(el.tagName || "?").toLowerCase()}: position ${c.position} overflow ${c.overflow} transform ${c.transform} filter ${c.filter} contain ${c.contain} zoom ${c.zoom}`);
+    }
+    return L.join('\n');
+}
+
+/* ------------------------------------------------------------------ */
 /* Visibility rescue (phones): off-screen / covered / reset            */
 /* ------------------------------------------------------------------ */
 function rescueProblem(el) {
@@ -1597,7 +1700,7 @@ function rescueProblem(el) {
 function resetFabPos() {
     try { localStorage.removeItem(LS_FAB); } catch { /* ignore */ }
     const fab = document.getElementById('jx_fab');
-    if (fab) for (const k of ['left', 'top', 'right', 'bottom', 'zIndex']) fab.style[k] = '';
+    if (fab) fabDefaults(fab);
 }
 
 function rescueFab() {
@@ -1610,7 +1713,7 @@ function rescueFab() {
 
 function rescuePanel() {
     const panel = document.getElementById('jx_panel');
-    if (!panel || !ui.open) return;
+    if (!panel || !ui.open || ui.popup) return;
     const p = rescueProblem(panel);
     if (p === 'off' || p === 'size') {
         console.warn('[Jobs] panel was off-screen, re-anchoring');
@@ -1629,8 +1732,9 @@ async function registerSlash() {
     try {
         const [{ SlashCommandParser }, { SlashCommand }] = await Promise.all([import('../../../slash-commands/SlashCommandParser.js'), import('../../../slash-commands/SlashCommand.js')]);
         SlashCommandParser.addCommandObject(SlashCommand.fromProps({ name: 'jobs', callback: run, helpString: 'Open the Jobs & Career panel.' }));
+        ui.slashOk = 'yes';
     } catch {
-        try { getContext().registerSlashCommand?.('jobs', run, [], 'Open the Jobs & Career panel.', true, true); } catch { /* ignore */ }
+        try { getContext().registerSlashCommand?.('jobs', run, [], 'Open the Jobs & Career panel.', true, true); ui.slashOk = 'legacy'; } catch { ui.slashOk = 'failed'; }
     }
 }
 
@@ -1643,6 +1747,9 @@ function buildUi() {
       <button class="menu_button" id="jx_phone" data-a="phone"><i class="fa-solid fa-mobile-screen-button"></i></button>
       <button class="menu_button" id="jx_power" data-a="power"><i class="fa-solid fa-power-off"></i></button>
       <button class="menu_button" data-a="close"><i class="fa-solid fa-xmark"></i></button></div><div id="jx_body"></div>`;
+    panel.style.setProperty('position', 'fixed', 'important');
+    panel.style.setProperty('z-index', '5001', 'important');
+    panel.style.setProperty('display', 'none', 'important');
     document.body.appendChild(panel);
     panel.style.opacity = opacity();
     panel.querySelector('#jx_opacity').addEventListener('input', (e) => { panel.style.opacity = e.target.value; localStorage.setItem(LS_OPACITY, e.target.value); });
@@ -1652,6 +1759,8 @@ function buildUi() {
 
     const fab = document.createElement('div');
     fab.id = 'jx_fab'; fab.textContent = '💼'; fab.title = t('title');
+    fab.style.cssText = 'position:fixed;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;background:var(--SmartThemeBlurTintColor,#222);border:2px solid var(--SmartThemeQuoteColor,#7aa2ff);box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none;touch-action:none;';
+    fabDefaults(fab);
     document.body.appendChild(fab);
     initFab(fab);
 

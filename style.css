@@ -185,3 +185,12 @@
     #jx_panel .menu_button { padding: 8px 12px; }
     .jx-tab { padding: 8px 14px; }
 }
+
+/* ---------- Panel hosted inside a SillyTavern popup ---------- */
+.jx-popup-holder { width: 100%; }
+#jx_panel.jx-embedded {
+    position: static !important; width: 100% !important; max-width: none !important; height: 74vh !important; height: 74dvh !important;
+    left: auto; right: auto; top: auto; bottom: auto; opacity: 1 !important; box-shadow: none; border-radius: 12px; backdrop-filter: none;
+}
+#jx_panel.jx-embedded .jx-head input[type=range] { display: none; }
+#jx_panel.jx-embedded .jx-head::before { display: none; }
