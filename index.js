@@ -5,7 +5,7 @@ import * as ST from '../../../../script.js';
 import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 const LS_OPACITY = 'jobsext_opacity';
 const LS_FAB = 'jobsext_fab_pos';
 
@@ -932,6 +932,13 @@ function applyPrompt() {
 /* ------------------------------------------------------------------ */
 /* UI state & rendering                                                */
 /* ------------------------------------------------------------------ */
+function byId(id) {
+    const el = document.getElementById(id);
+    if (el) return el;
+    const root = ui.panelEl;
+    if (!root) return null;
+    return root.id === id ? root : root.querySelector('#' + id);
+}
 const LS_SETSEC = 'jobsext_setsec';
 function loadSetSec() { try { return JSON.parse(localStorage.getItem(LS_SETSEC) || 'null') || { general: true }; } catch { return { general: true }; } }
 const ui = { view: 'main', setSec: loadSetSec(), open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
@@ -1124,22 +1131,22 @@ function renderWorld() {
 
 function updatePower() {
     const on = isOn();
-    document.getElementById('jx_panel')?.classList.toggle('jx-off', !on);
-    document.getElementById('jx_fab')?.classList.toggle('jx-off', !on);
-    const b = document.getElementById('jx_power');
+    byId('jx_panel')?.classList.toggle('jx-off', !on);
+    byId('jx_fab')?.classList.toggle('jx-off', !on);
+    const b = byId('jx_power');
     if (b) { b.title = t('powerTip'); b.classList.toggle('jx-on', on); }
-    const g = document.getElementById('jx_gear');
+    const g = byId('jx_gear');
     if (g) { g.title = t('settingsTip'); g.classList.toggle('jx-on', ui.view === 'settings'); }
-    const ph = document.getElementById('jx_phone');
+    const ph = byId('jx_phone');
     if (ph) { ph.title = t('phoneTip'); ph.classList.toggle('jx-on', !!S().phone.all); }
 }
 function updateFab() {
-    const fab = document.getElementById('jx_fab');
+    const fab = byId('jx_fab');
     if (fab) fab.style.display = S().showFab ? '' : 'none';
 }
 
 function renderPanel() {
-    const body = document.getElementById('jx_body');
+    const body = byId('jx_body');
     if (!body) return;
     updatePower(); updateFab();
     if (ui.view === 'settings') { const sc = body.scrollTop; body.innerHTML = settingsHtml(true); body.scrollTop = sc; return; }
@@ -1206,7 +1213,7 @@ function renderPanel() {
     }
     body.innerHTML = h;
     body.scrollTop = scroll;
-    const op = document.getElementById('jx_opacity');
+    const op = byId('jx_opacity');
     if (op) op.title = t('opacity');
 }
 
@@ -1248,7 +1255,7 @@ function settingsHtml(inPanel) {
 }
 
 function renderSettings() {
-    const el = document.getElementById('jx_settings_body');
+    const el = byId('jx_settings_body');
     if (el) el.innerHTML = settingsHtml(false);
 }
 
@@ -1505,7 +1512,7 @@ async function onClick(e) {
             ui.busy = ''; return afterChange();
         }
         case 'export': download(`jobs_${p.name}.json`, JSON.stringify({ jobs: p.jobs, history: p.history, resume: p.resume }, null, 2)); return;
-        case 'import': document.getElementById('jx_file')?.click(); return;
+        case 'import': byId('jx_file')?.click(); return;
         case 'phone': s.phone.all = !s.phone.all; save(); await refreshBank(); applyPrompt(); rerenderAll(); return;
         case 'power':
             if (!s.enabled) s.enabled = true;
@@ -1562,35 +1569,67 @@ async function openPanelInner() {
 }
 function togglePanel() { ui.open ? onClick({ target: document.querySelector('#jx_panel [data-a="close"]') }) : openPanel(); }
 
+// Positions use top/left in pixels only. Some pages put a transform on <html>, which makes
+// position:fixed relative to a zero-height box and sends bottom/right-based elements off-screen.
+const FAB_SIZE = 48;
+function placeFab(fab, x, y) {
+    const nx = Math.min(Math.max(0, x), Math.max(0, window.innerWidth - FAB_SIZE));
+    const ny = Math.min(Math.max(0, y), Math.max(0, window.innerHeight - FAB_SIZE));
+    fab.style.left = Math.round(nx) + 'px'; fab.style.top = Math.round(ny) + 'px';
+    fab.style.right = 'auto'; fab.style.bottom = 'auto';
+}
+function fabDefaults(fab) {
+    const phone = window.innerWidth <= 800;
+    placeFab(fab, window.innerWidth - FAB_SIZE - (phone ? 10 : 14), window.innerHeight - FAB_SIZE - (phone ? 120 : 90));
+    fab.style.zIndex = '5000';
+}
+function layoutFab(fab) {
+    let pos = null;
+    try { pos = JSON.parse(localStorage.getItem(LS_FAB) || 'null'); } catch { /* ignore */ }
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) placeFab(fab, pos.x, pos.y);
+    else fabDefaults(fab);
+}
+function layoutPanel(panel) {
+    const vw = window.innerWidth, vh = window.innerHeight, st = panel.style;
+    if (vw <= 800) {
+        const top = Math.round(vh * 0.1);
+        st.left = '0px'; st.top = top + 'px'; st.width = vw + 'px'; st.height = (vh - top) + 'px'; st.borderRadius = '18px 18px 0 0';
+    } else {
+        const w = Math.min(460, vw - 32);
+        st.left = (vw - w - 16) + 'px'; st.top = '60px'; st.width = w + 'px'; st.height = Math.round(vh * 0.76) + 'px'; st.borderRadius = '16px';
+    }
+    st.right = 'auto'; st.bottom = 'auto'; st.maxWidth = 'none'; st.maxHeight = 'none';
+}
+function clearPanelLayout(panel) {
+    for (const k of ['left', 'top', 'width', 'height', 'maxWidth', 'maxHeight', 'borderRadius', 'right', 'bottom']) panel.style[k] = '';
+}
+
 function initFab(fab) {
-    const clamp = (x, y) => [Math.min(Math.max(0, x), window.innerWidth - fab.offsetWidth), Math.min(Math.max(0, y), window.innerHeight - fab.offsetHeight)];
-    const place = (x, y) => { [x, y] = clamp(x, y); fab.style.left = x + 'px'; fab.style.top = y + 'px'; fab.style.right = 'auto'; fab.style.bottom = 'auto'; };
-    try {
-        const pos = JSON.parse(localStorage.getItem(LS_FAB) || 'null');
-        if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) && pos.x >= 0 && pos.y >= 0 && pos.x <= window.innerWidth - 24 && pos.y <= window.innerHeight - 24) place(pos.x, pos.y);
-        else if (pos) localStorage.removeItem(LS_FAB);
-    } catch { /* ignore */ }
+    layoutFab(fab);
     let drag = null;
     let wasDragged = false;
     fab.addEventListener('pointerdown', (e) => {
-        drag = { sx: e.clientX, sy: e.clientY, ox: fab.offsetLeft, oy: fab.offsetTop, moved: false };
-        fab.setPointerCapture(e.pointerId);
+        drag = { sx: e.clientX, sy: e.clientY, ox: parseFloat(fab.style.left) || 0, oy: parseFloat(fab.style.top) || 0, moved: false };
+        try { fab.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     });
     fab.addEventListener('pointermove', (e) => {
         if (!drag) return;
         const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
         if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
-        if (drag.moved) place(drag.ox + dx, drag.oy + dy);
+        if (drag.moved) placeFab(fab, drag.ox + dx, drag.oy + dy);
     });
-    const end = () => {
+    fab.addEventListener('pointerup', () => {
         if (!drag) return;
         const d = drag; drag = null;
-        if (d.moved) { wasDragged = true; localStorage.setItem(LS_FAB, JSON.stringify({ x: fab.offsetLeft, y: fab.offsetTop })); }
-    };
+        if (d.moved) { wasDragged = true; localStorage.setItem(LS_FAB, JSON.stringify({ x: parseFloat(fab.style.left), y: parseFloat(fab.style.top) })); }
+    });
     fab.addEventListener('click', () => { if (wasDragged) { wasDragged = false; return; } togglePanel(); });
-    fab.addEventListener('pointerup', end);
     fab.addEventListener('pointercancel', () => { drag = null; });
-    window.addEventListener('resize', () => { if (fab.style.left) place(fab.offsetLeft, fab.offsetTop); });
+    window.addEventListener('resize', () => {
+        layoutFab(fab);
+        const panel = byId('jx_panel');
+        if (panel && ui.open && !ui.popup) layoutPanel(panel);
+    });
 }
 
 /* ------------------------------------------------------------------ */
@@ -1604,9 +1643,10 @@ function useWindow() {
 }
 
 function showPanel(on) {
-    const panel = document.getElementById('jx_panel');
+    const panel = byId('jx_panel');
     if (!panel) return;
     panel.classList.toggle('jx-open', on);
+    if (on && !panel.classList.contains('jx-embedded')) layoutPanel(panel);
     panel.style.setProperty('display', on ? 'flex' : 'none', 'important');
 }
 
@@ -1614,11 +1654,12 @@ function showPanel(on) {
 async function openPopup() {
     const ctx = getContext();
     const Popup = ctx.Popup, TYPE = ctx.POPUP_TYPE;
-    const panel = document.getElementById('jx_panel');
+    const panel = byId('jx_panel');
     if (typeof Popup !== 'function' || !TYPE || !panel) return false;
     const holder = document.createElement('div');
     holder.className = 'jx-popup-holder';
     panel.classList.add('jx-embedded');
+    clearPanelLayout(panel);
     holder.appendChild(panel);
     showPanel(true);
     ui.popup = true; ui.open = true;
@@ -1630,7 +1671,7 @@ async function openPopup() {
         ui.popup = false; ui.open = false; ui.popupRef = null;
     };
     try {
-        pop = new Popup(holder, TYPE.TEXT, '', { wide: true, large: true, okButton: t('close'), cancelButton: false, allowVerticalScrolling: false });
+        pop = new Popup(holder, TYPE.TEXT, '', { wide: true, large: true, okButton: t('close'), cancelButton: false, allowVerticalScrolling: false, onOpen: () => { try { renderPanel(); } catch (e) { console.warn(e); } } });
     } catch (e) { console.warn('[Jobs] popup unavailable, using the floating panel', e); restore(); return false; }
     ui.popupRef = pop;
     if (isOn()) {
@@ -1643,14 +1684,6 @@ async function openPopup() {
     return true;
 }
 
-function fabDefaults(fab) {
-    const phone = window.innerWidth <= 800;
-    fab.style.left = 'auto'; fab.style.top = 'auto';
-    fab.style.right = phone ? '10px' : '14px';
-    fab.style.bottom = phone ? '120px' : '90px';
-    fab.style.zIndex = '5000';
-}
-
 function describeEl(el) {
     if (!el) return 'none';
     return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''}`;
@@ -1660,7 +1693,7 @@ function uiDiagnostics() {
     const ctx = getContext();
     const L = [`Jobs & Career UI diagnostics v${VERSION}`];
     const rect = (el) => { if (!el) return 'MISSING'; const r = el.getBoundingClientRect(); return `x${Math.round(r.left)} y${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`; };
-    const panel = document.getElementById('jx_panel'), fab = document.getElementById('jx_fab');
+    const panel = byId('jx_panel'), fab = byId('jx_fab');
     L.push(`viewport ${window.innerWidth}x${window.innerHeight}, dpr ${window.devicePixelRatio}, ${navigator.userAgent}`);
     L.push(`display setting: ${S().displayMode}; popup mode used here: ${useWindow()}; Popup API: ${typeof ctx.Popup}/${!!ctx.POPUP_TYPE}; /jobs registered: ${ui.slashOk}`);
     if (fab) {
@@ -1672,6 +1705,7 @@ function uiDiagnostics() {
         const c = getComputedStyle(panel);
         L.push(`panel: ${rect(panel)} display ${c.display} opacity ${c.opacity} z ${c.zIndex} position ${c.position}; open ${ui.open}; popup ${!!ui.popup}; parent ${describeEl(panel.parentElement)}`);
     } else L.push('panel: MISSING from the page');
+    if (fab) L.push(`fab inline position: left ${fab.style.left} top ${fab.style.top}; saved ${localStorage.getItem(LS_FAB) || 'none'}`);
     L.push(`stylesheet applied: ${fab ? getComputedStyle(fab).borderTopLeftRadius : '?'} (expect 24px or 50%)`);
     for (const el of [document.documentElement, document.body]) {
         const c = getComputedStyle(el);
@@ -1699,12 +1733,12 @@ function rescueProblem(el) {
 
 function resetFabPos() {
     try { localStorage.removeItem(LS_FAB); } catch { /* ignore */ }
-    const fab = document.getElementById('jx_fab');
+    const fab = byId('jx_fab');
     if (fab) fabDefaults(fab);
 }
 
 function rescueFab() {
-    const fab = document.getElementById('jx_fab');
+    const fab = byId('jx_fab');
     if (!fab || fab.style.display === 'none') return;
     const p = rescueProblem(fab);
     if (p === 'off') { console.warn('[Jobs] floating button was off-screen, resetting'); resetFabPos(); }
@@ -1712,7 +1746,7 @@ function rescueFab() {
 }
 
 function rescuePanel() {
-    const panel = document.getElementById('jx_panel');
+    const panel = byId('jx_panel');
     if (!panel || !ui.open || ui.popup) return;
     const p = rescueProblem(panel);
     if (p === 'off' || p === 'size') {
@@ -1741,6 +1775,7 @@ async function registerSlash() {
 function buildUi() {
     const panel = document.createElement('div');
     panel.id = 'jx_panel';
+    ui.panelEl = panel;
     panel.innerHTML = `<div class="jx-head"><span class="jx-title">💼 ${t('title')}</span>
       <input type="range" id="jx_opacity" min="0.3" max="1" step="0.05" value="${opacity()}">
       <button class="menu_button" id="jx_gear" data-a="gear"><i class="fa-solid fa-gear"></i></button>
