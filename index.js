@@ -73,6 +73,7 @@ const I18N = {
         wb_historical: 'A historical era (name the period here): trades, craftsmen, servants, merchants, farmers and clerks. No modern technology.',
         wb_postapoc: 'Post-apocalyptic wasteland: scavengers, traders, settlements, guards and mechanics. Barter and scrap are money.',
         wb_steampunk: 'Industrial steam-powered era: factories, airships, inventors, clerks, mechanics and guilds.', wb_custom: '',
+        emoji: 'Emoji',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -136,6 +137,7 @@ const I18N = {
         wb_historical: 'Историческая эпоха (укажите период): ремёсла, слуги, торговцы, крестьяне и писари. Современных технологий нет.',
         wb_postapoc: 'Постапокалиптическая пустошь: мусорщики, торговцы, поселения, охрана и механики. Деньги — бартер и хлам.',
         wb_steampunk: 'Индустриальная паровая эпоха: фабрики, дирижабли, изобретатели, клерки, механики и гильдии.', wb_custom: '',
+        emoji: 'Эмодзи',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -265,7 +267,7 @@ function newJob(p = {}) {
 }
 
 function mkPerson(id, name, kind) {
-    return { id, name, kind, group: 'unknown', resume: { skills: '', seeking: '' }, jobs: [], history: [], phoneContact: '' };
+    return { id, name, kind, emoji: '', group: 'unknown', resume: { skills: '', seeking: '' }, jobs: [], history: [], phoneContact: '' };
 }
 
 function ensurePeople() {
@@ -1029,7 +1031,13 @@ function renderAwareness(p, j) {
     return h;
 }
 
-const kindIcon = (p) => (p.kind === 'user' ? '👤' : p.kind === 'bot' ? '🤖' : '🙂');
+const kindIcon = (p) => p.emoji || (p.kind === 'user' ? '👤' : p.kind === 'bot' ? '🤖' : '🙂');
+const EMOJI_PICKS = ['👤', '🤖', '🙂', '😎', '🧑‍💼', '👩‍🍳', '🧑‍🔧', '🧑‍⚕️', '🧑‍🎨', '🧑‍🏫', '🧙', '🧝', '🧛', '🐱', '🐶', '🦊', '🐺', '🐉', '⭐', '💼', '💖', '🔥', '🌙', '🍀'];
+function firstEmoji(v) {
+    const str = String(v || '').trim();
+    if (!str) return '';
+    try { return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(str)][0].segment; } catch { return Array.from(str)[0]; }
+}
 
 function renderCoworkers(p, j) {
     const others = visiblePeople().filter((x) => x.id !== p.id);
@@ -1142,7 +1150,9 @@ function renderPanel() {
         + `<button class="jx-tab jx-add" data-a="addNpc">${t('addNpc')}</button></div>`;
 
     h += `<div class="jx-card"><div class="jx-row"><label class="jx-f jx-inline"><span>${t('ageGroup')}</span>
-      <select data-p="group">${['unknown', 'child', 'teen', 'adult'].map((g) => `<option value="${g}" ${p.group === g ? 'selected' : ''}>${esc(t('g_' + g))}</option>`).join('')}</select></label>`;
+      <select data-p="group">${['unknown', 'child', 'teen', 'adult'].map((g) => `<option value="${g}" ${p.group === g ? 'selected' : ''}>${esc(t('g_' + g))}</option>`).join('')}</select></label>
+      <label class="jx-f jx-inline"><span>${t('emoji')}</span><input type="text" data-p="emoji" list="jx_emoji" value="${esc(p.emoji || '')}" placeholder="${esc(kindIcon({ ...p, emoji: '' }))}" style="width:64px;text-align:center"></label>
+      <datalist id="jx_emoji">${EMOJI_PICKS.map((e) => `<option value="${e}"></option>`).join('')}</datalist>`;
     if (p.kind === 'npc') {
         if (bank.contacts) h += `<select data-p="phoneContact" class="jx-contact"><option value="">📱 —</option>${ui.contacts.map((c) => `<option ${p.phoneContact === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`;
         h += `<button class="menu_button" data-a="delNpc">🗑 NPC</button>`;
@@ -1265,7 +1275,7 @@ async function onChange(e) {
     }
     if (el.dataset.p) {
         const p = D().people[ui.selected];
-        setByPath(p, el.dataset.p, val);
+        setByPath(p, el.dataset.p, el.dataset.p === 'emoji' ? firstEmoji(val) : val);
         return afterChange();
     }
     const { p, j } = findJob(el.dataset.j);

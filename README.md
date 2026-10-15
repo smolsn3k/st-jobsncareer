@@ -21,6 +21,7 @@ Open the panel with the 💼 button, the **Jobs** entry in the Extensions menu (
 ## Features
 
 - Jobs for you, the bot and any NPCs, several per character, with type, work mode, schedule, state, category, salary, vacation days per year and insurance (yes/no)
+- A custom emoji for you, the bot and every NPC (shown on the person tabs and coworker lists; pick from the suggestions or type any emoji, clear it to go back to the default)
 - Age group picker (Unknown / Child / Teenager / Adult) that drives the job-search rules
 - A resume per character (skills and what they are looking for), used by job search and shared with the model
 - Coworkers: tick any person in the chat (you, the bot, NPCs) as a coworker, or create a new NPC coworker
