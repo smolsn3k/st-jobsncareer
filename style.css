@@ -8,7 +8,7 @@
 
 /* ---------- Floating button (draggable) ---------- */
 #jx_fab {
-    position: fixed; right: 14px; bottom: 90px; z-index: 3000; width: 48px; height: 48px; border-radius: 50%;
+    position: fixed; right: 14px; bottom: 90px; z-index: 5000; width: 48px; height: 48px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: grab;
     background: var(--SmartThemeBlurTintColor, #222); border: 2px solid var(--jx-accent);
     box-shadow: 0 4px 14px rgba(0, 0, 0, .45); user-select: none; touch-action: none; transition: transform .12s, opacity .2s;
@@ -18,7 +18,7 @@
 
 /* ---------- Panel shell ---------- */
 #jx_panel {
-    display: none; position: fixed; z-index: 3001; right: 16px; top: 60px; width: 460px; max-width: 96vw; height: 76vh;
+    display: none; position: fixed; z-index: 5001; right: 16px; top: 60px; width: 460px; max-width: 96vw; height: 76vh;
     flex-direction: column; overflow: hidden; border-radius: 16px; color: var(--SmartThemeBodyColor, #ddd);
     background: var(--SmartThemeBlurTintColor, #1e1e1e); border: 1px solid var(--jx-border);
     box-shadow: 0 10px 34px rgba(0, 0, 0, .55); backdrop-filter: blur(var(--SmartThemeBlurStrength, 10px));
@@ -162,3 +162,26 @@
 .jx-log { font-size: .85em; padding: 3px 6px; border-left: 2px solid var(--jx-border); margin: 3px 0; }
 .jx-hist { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 #jx_settings_body small { display: block; opacity: .65; margin: 2px 0 8px; }
+
+/* ---------- Settings sections (drawer + in-panel) ---------- */
+.jx-setsec { border: 1px solid var(--SmartThemeBorderColor, rgba(127, 127, 127, .45)); border-radius: 10px; margin: 8px 0; overflow: hidden; }
+.jx-setsec > .jx-sh { padding: 8px 10px; background: rgba(127, 127, 127, .12); }
+.jx-setbody { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.jx-setbody label { display: flex; flex-direction: column; gap: 3px; }
+.jx-setbody label.checkbox_label { flex-direction: row; align-items: center; gap: 8px; }
+.jx-setbody small { display: block; opacity: .65; margin: 0 0 4px; }
+#jx_panel .jx-setbody input[type=text], #jx_panel .jx-setbody input[type=number], #jx_panel .jx-setbody select { width: 100%; }
+#jx_gear.jx-on { box-shadow: inset 0 0 0 2px var(--jx-accent); }
+.jx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Phones ---------- */
+@media (max-width: 800px) {
+    #jx_panel { height: 86vh; height: 86dvh; max-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+    #jx_body { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 72px; }
+    #jx_panel input[type=text], #jx_panel input[type=number], #jx_panel input[type=date], #jx_panel select, #jx_panel textarea { font-size: 16px; } /* stops iOS zoom-on-focus */
+    .jx-head { gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .jx-head input[type=range] { width: 56px; }
+    .jx-head .menu_button { padding: 6px 9px; }
+    #jx_panel .menu_button { padding: 8px 12px; }
+    .jx-tab { padding: 8px 14px; }
+}

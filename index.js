@@ -74,6 +74,7 @@ const I18N = {
         wb_postapoc: 'Post-apocalyptic wasteland: scavengers, traders, settlements, guards and mechanics. Barter and scrap are money.',
         wb_steampunk: 'Industrial steam-powered era: factories, airships, inventors, clerks, mechanics and guilds.', wb_custom: '',
         emoji: 'Emoji',
+        settingsTip: 'Settings', back: 'Back',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -138,6 +139,7 @@ const I18N = {
         wb_postapoc: 'Постапокалиптическая пустошь: мусорщики, торговцы, поселения, охрана и механики. Деньги — бартер и хлам.',
         wb_steampunk: 'Индустриальная паровая эпоха: фабрики, дирижабли, изобретатели, клерки, механики и гильдии.', wb_custom: '',
         emoji: 'Эмодзи',
+        settingsTip: 'Настройки', back: 'Назад',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -924,7 +926,9 @@ function applyPrompt() {
 /* ------------------------------------------------------------------ */
 /* UI state & rendering                                                */
 /* ------------------------------------------------------------------ */
-const ui = { open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
+const LS_SETSEC = 'jobsext_setsec';
+function loadSetSec() { try { return JSON.parse(localStorage.getItem(LS_SETSEC) || 'null') || { general: true }; } catch { return { general: true }; } }
+const ui = { view: 'main', setSec: loadSetSec(), open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
 
 function opacity() { const v = parseFloat(localStorage.getItem(LS_OPACITY)); return Number.isNaN(v) ? 1 : v; }
 
@@ -1118,6 +1122,8 @@ function updatePower() {
     document.getElementById('jx_fab')?.classList.toggle('jx-off', !on);
     const b = document.getElementById('jx_power');
     if (b) { b.title = t('powerTip'); b.classList.toggle('jx-on', on); }
+    const g = document.getElementById('jx_gear');
+    if (g) { g.title = t('settingsTip'); g.classList.toggle('jx-on', ui.view === 'settings'); }
     const ph = document.getElementById('jx_phone');
     if (ph) { ph.title = t('phoneTip'); ph.classList.toggle('jx-on', !!S().phone.all); }
 }
@@ -1130,6 +1136,7 @@ function renderPanel() {
     const body = document.getElementById('jx_body');
     if (!body) return;
     updatePower(); updateFab();
+    if (ui.view === 'settings') { const sc = body.scrollTop; body.innerHTML = settingsHtml(true); body.scrollTop = sc; return; }
     if (!S().enabled) { body.innerHTML = `<div class="jx-empty">${t('disabledMsg')}</div>`; return; }
     if (!hasChat()) { body.innerHTML = `<div class="jx-empty">${t('noChat')}</div>`; return; }
     if (chatOff()) { body.innerHTML = `<div class="jx-empty">${t('offChat')}</div>`; return; }
@@ -1197,32 +1204,43 @@ function renderPanel() {
     if (op) op.title = t('opacity');
 }
 
-function renderSettings() {
-    const el = document.getElementById('jx_settings_body');
-    if (!el) return;
+function setSection(name, title, html) {
+    const open = !!ui.setSec[name];
+    return `<div class="jx-setsec"><div class="jx-sh" data-a="setSec" data-sec="${name}"><span>${esc(title)}</span><span class="jx-chev">${open ? '▾' : '▸'}</span></div>${open ? `<div class="jx-sb jx-setbody">${html}</div>` : ''}</div>`;
+}
+
+function settingsHtml(inPanel) {
     const s = S();
     const chk = (path, label, dis = false) => `<label class="checkbox_label"><input type="checkbox" data-s="${path}" data-c="1" ${getByPath(s, path) ? 'checked' : ''} ${dis ? 'disabled' : ''}><span>${esc(label)}</span></label>`;
     const numf = (path, label) => `<label>${esc(label)} <input type="number" min="0" data-s="${path}" data-n="1" class="text_pole" value="${getByPath(s, path)}"></label>`;
     const profOpts = (cur) => `<option value="">${t('s_default')}</option>` + profiles().map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-    el.innerHTML = `<h4>${t('s_global')}</h4>${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
+    const top = inPanel
+        ? `<div class="jx-row"><button class="menu_button" data-a="gear">← ${t('back')}</button></div>`
+        : `<div class="menu_button" data-a="openPanel">${t('open')}</div>`;
+    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
-      <label>${t('s_defReduced')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label><small>${t('reducedHint')}</small>
-      <h4>${t('s_ai')}</h4>
-      <label>${t('s_api')} <select data-s="apiProfile" class="text_pole">${profOpts(s.apiProfile)}</select></label>
+      <label>${t('s_defReduced')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label><small>${t('reducedHint')}</small>`;
+    const ai = `<label>${t('s_api')} <select data-s="apiProfile" class="text_pole">${profOpts(s.apiProfile)}</select></label>
       <label>${t('s_fallback')} <select data-s="fallbackProfile" class="text_pole">${profOpts(s.fallbackProfile)}</select></label>
       ${chk('inject', t('s_inject'))}
-      <label>${t('s_depth')} <input type="number" min="0" max="20" data-s="injectDepth" data-n="1" class="text_pole" value="${s.injectDepth}"></label>
-      <h4>${t('s_phone')}</h4>${chk('phone.all', t('ps_all'))}${chk('phone.bank', t('ps_bank'), !s.phone.all)}${chk('phone.calendar', t('ps_cal'), !s.phone.all)}${chk('phone.contacts', t('ps_contacts'), !s.phone.all)}${chk('phone.storyDate', t('ps_date'), !s.phone.all)}${chk('bankInChat', t('s_bank'), !s.phone.all || !s.phone.bank)}
+      <label>${t('s_depth')} <input type="number" min="0" max="20" data-s="injectDepth" data-n="1" class="text_pole" value="${s.injectDepth}"></label>`;
+    const phone = `${chk('phone.all', t('ps_all'))}${chk('phone.bank', t('ps_bank'), !s.phone.all)}${chk('phone.calendar', t('ps_cal'), !s.phone.all)}${chk('phone.contacts', t('ps_contacts'), !s.phone.all)}${chk('phone.storyDate', t('ps_date'), !s.phone.all)}${chk('bankInChat', t('s_bank'), !s.phone.all || !s.phone.bank)}
       <label>${t('s_phoneKey')} <input type="text" data-s="phoneKey" class="text_pole" value="${esc(s.phoneKey)}"></label>
-      <div class="menu_button" id="jx_diag_btn">${t('diag')}</div>
-      <textarea id="jx_diag" class="text_pole" rows="8" readonly hidden placeholder="${esc(t('diagHint'))}"></textarea>
-      <h4>${t('s_track')}</h4>${chk('tags', t('s_tags'))}<small>${t('s_tagsHint')}</small>
+      <div class="menu_button" data-a="diag">${t('diag')}</div>
+      <textarea class="text_pole jx-diag" rows="8" readonly hidden placeholder="${esc(t('diagHint'))}"></textarea>`;
+    const track = `${chk('tags', t('s_tags'))}<small>${t('s_tagsHint')}</small>
       ${numf('promoDone', t('s_promoDone'))}${numf('promoRaise', t('s_promoRaise'))}
       ${chk('autoFail', t('s_autoFail'))}${numf('overdueGrace', t('s_grace'))}<small>${t('s_graceHint')}</small>
-      <h4>${t('pen')}</h4>${numf('penalty.promo', t('pen_promo'))}${numf('penalty.stress', t('pen_stress'))}${numf('penalty.satisfaction', t('pen_sat'))}${numf('penalty.finePct', t('pen_fine'))}
-      <h4>${t('s_optional')}</h4>
-      ${Object.keys(DEFAULTS.opt).map((k) => chk('opt.' + k, t('o_' + k))).join('')}
-      <div class="menu_button" id="jx_open_btn">${t('open')}</div>`;
+      <h4>${t('pen')}</h4>${numf('penalty.promo', t('pen_promo'))}${numf('penalty.stress', t('pen_stress'))}${numf('penalty.satisfaction', t('pen_sat'))}${numf('penalty.finePct', t('pen_fine'))}`;
+    const optional = Object.keys(DEFAULTS.opt).map((k) => chk('opt.' + k, t('o_' + k))).join('');
+    return top
+        + setSection('general', t('s_global'), general) + setSection('ai', t('s_ai'), ai) + setSection('phone', t('s_phone'), phone)
+        + setSection('track', t('s_track'), track) + setSection('optional', t('s_optional'), optional);
+}
+
+function renderSettings() {
+    const el = document.getElementById('jx_settings_body');
+    if (el) el.innerHTML = settingsHtml(false);
 }
 
 function rerenderAll() {
@@ -1356,6 +1374,14 @@ async function onClick(e) {
         case 'restoreJob': { const h = p.history.splice(+el.dataset.i, 1)[0]; if (h) p.jobs.push(h); return afterChange(); }
         case 'delHist': if (confirm(t('confirm'))) { p.history.splice(+el.dataset.i, 1); return afterChange(); } return;
         case 'logToggle': ui.logOpen = !ui.logOpen; return renderPanel();
+        case 'gear': ui.view = ui.view === 'settings' ? 'main' : 'settings'; rerenderAll(); return;
+        case 'setSec': ui.setSec[el.dataset.sec] = !ui.setSec[el.dataset.sec]; try { localStorage.setItem(LS_SETSEC, JSON.stringify(ui.setSec)); } catch { /* ignore */ } rerenderAll(); return;
+        case 'openPanel': ui.view = 'main'; await openPanel(); return;
+        case 'diag': {
+            const ta = el.closest('.jx-setbody, #jx_settings_body, #jx_body')?.querySelector('.jx-diag');
+            if (ta) { ta.hidden = false; ta.value = '…'; ta.value = await diagnose(); ta.select(); }
+            return;
+        }
         case 'worldToggle': ui.worldOpen = !ui.worldOpen; return renderPanel();
         case 'scanWorld': {
             ui.busy = 'world'; renderPanel();
@@ -1514,6 +1540,7 @@ function initFab(fab) {
     const place = (x, y) => { [x, y] = clamp(x, y); fab.style.left = x + 'px'; fab.style.top = y + 'px'; fab.style.right = 'auto'; fab.style.bottom = 'auto'; };
     try { const pos = JSON.parse(localStorage.getItem(LS_FAB) || 'null'); if (pos) place(pos.x, pos.y); } catch { /* ignore */ }
     let drag = null;
+    let wasDragged = false;
     fab.addEventListener('pointerdown', (e) => {
         drag = { sx: e.clientX, sy: e.clientY, ox: fab.offsetLeft, oy: fab.offsetTop, moved: false };
         fab.setPointerCapture(e.pointerId);
@@ -1527,9 +1554,9 @@ function initFab(fab) {
     const end = () => {
         if (!drag) return;
         const d = drag; drag = null;
-        if (d.moved) localStorage.setItem(LS_FAB, JSON.stringify({ x: fab.offsetLeft, y: fab.offsetTop }));
-        else togglePanel();
+        if (d.moved) { wasDragged = true; localStorage.setItem(LS_FAB, JSON.stringify({ x: fab.offsetLeft, y: fab.offsetTop })); }
     };
+    fab.addEventListener('click', () => { if (wasDragged) { wasDragged = false; return; } togglePanel(); });
     fab.addEventListener('pointerup', end);
     fab.addEventListener('pointercancel', () => { drag = null; });
     window.addEventListener('resize', () => { if (fab.style.left) place(fab.offsetLeft, fab.offsetTop); });
@@ -1540,6 +1567,7 @@ function buildUi() {
     panel.id = 'jx_panel';
     panel.innerHTML = `<div class="jx-head"><span class="jx-title">💼 ${t('title')}</span>
       <input type="range" id="jx_opacity" min="0.3" max="1" step="0.05" value="${opacity()}">
+      <button class="menu_button" id="jx_gear" data-a="gear"><i class="fa-solid fa-gear"></i></button>
       <button class="menu_button" id="jx_phone" data-a="phone"><i class="fa-solid fa-mobile-screen-button"></i></button>
       <button class="menu_button" id="jx_power" data-a="power"><i class="fa-solid fa-power-off"></i></button>
       <button class="menu_button" data-a="close"><i class="fa-solid fa-xmark"></i></button></div><div id="jx_body"></div>`;
@@ -1571,10 +1599,7 @@ function buildUi() {
         d.innerHTML = '<div class="inline-drawer-toggle inline-drawer-header"><b>Jobs &amp; Career</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div><div class="inline-drawer-content" id="jx_settings_body"></div>';
         host.appendChild(d);
         d.addEventListener('change', onChange);
-        d.addEventListener('click', async (e) => {
-            if (e.target.id === 'jx_open_btn') openPanel();
-            if (e.target.id === 'jx_diag_btn') { const ta = document.getElementById('jx_diag'); ta.hidden = false; ta.value = '…'; ta.value = await diagnose(); ta.select(); }
-        });
+        d.addEventListener('click', onClick);
     }
 }
 

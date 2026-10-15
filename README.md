@@ -18,6 +18,10 @@ To update later, use the same Extensions panel (**Manage extensions**, then the 
 
 Open the panel with the 💼 button, the **Jobs** entry in the Extensions menu (wand icon), or the **Jobs & Career** drawer in Extensions settings.
 
+## Settings
+
+The settings are grouped into collapsible sections (General, AI & prompt, Phone-ST, Tracking & penalties, Optional features); which sections are open is remembered per device. They are available in two places: the **Jobs & Career** drawer in Extensions settings, and inside the panel itself through the ⚙ gear button in the panel header (tap it again, or **Back**, to return to your jobs).
+
 ## Features
 
 - Jobs for you, the bot and any NPCs, several per character, with type, work mode, schedule, state, category, salary, vacation days per year and insurance (yes/no)
