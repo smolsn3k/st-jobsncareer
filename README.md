@@ -33,7 +33,7 @@ The settings are grouped into collapsible sections (General, AI & prompt, Phone-
 - Vacation planner: plan time off ahead, start it later, end it; optionally add it to the Phone-ST calendar
 - Salary with currency and pay period, running total earned, freelance rates, per-job tasks that pay out when done
 - Job history: archived jobs can be restored from the Previous jobs list (optional feature)
-- Job search (standard, part-time, teen, adult), manual entry, and scanning the chat or character card
+- Job board: one search with filters (type: any / full-time / part-time / teen / freelance / adult, work mode, insurance, minimum pay, minimum vacation days, keywords) and a field for how many jobs to find. Every listing has a salary (if the model leaves one out it is asked again, and as a last resort an estimate is shown and marked), plus vacation days and insurance. **Apply** adds the job. Manual entry and scanning the chat or card sit under the board.
 - Age rules and an adult content toggle (off by default). With the toggle on, the **Adult jobs** search suggests explicit adult-industry work (sex work, escort, stripper, cam model and similar) with frank descriptions. It is only available for characters whose age group is set to **Adult**; adult jobs stay hidden for everyone else. If your model refuses these requests, pick a different **API profile** in the settings.
 - Awareness: choose who knows about each job
 - Phone-ST integration (bank balance, currency, deposits, contacts, messages, notifications)
@@ -47,12 +47,21 @@ The **World** card at the top of the panel sets the setting for the chat: Modern
 - **Scan lorebook** reads the active lorebook entries (global, character and chat books) and asks your model to write the world description, type and currency for you. **Scan character card** does the same from the card text. Review the result before relying on it.
 - **Save as world** stores the current world in a library that is shared between chats; load or delete saved worlds from the same card. The active world itself belongs to the chat.
 
+## Shifts, payday and rewards
+
+- **Work shift:** the **Work & payday** section of a job has **Start shift** / **End shift**. The model can do the same with hidden tags (`[job:shift|Alex|Chef|start]`, `[job:shift|Alex|Chef|end|6.5]`), so a character going to work and coming home in the roleplay is picked up automatically. Shift length comes from the tag, otherwise from Phone-ST's story clock when it has a time of day, otherwise the job's default shift length.
+- **Pay on shift end:** jobs paid **per hour** get rate × hours, **per shift** get the shift rate, and **per day** get the day rate once per story date. The money goes to the Phone-ST bank for you.
+- **Payday by story date:** jobs paid **per week, month or year** are paid automatically when Phone-ST's story date reaches the next payday, with catch-up if time jumps (the day of the month is kept, so a payday on the 31st becomes the 28th in February and goes back to the 31st in March). Set the cycle start under **Last payday**; turn it off per job or in the settings. This needs the Phone-ST story date.
+- **Tasks depend on the job:** freelance tasks are paid when done (usually per project). Tasks in a regular job are not paid separately: they give **EXP**, which also fills the promotion meter.
+
 ## Tracking from the chat (hidden tags)
 
 When a job exists, the model is asked to add hidden tags at the end of its replies, for example:
 
 ```
-[job:task|Alex|Chef|Prepare tasting menu|2026-11-06|200]
+[job:task|Alex|Chef|Prepare tasting menu|2026-11-06|20]   (last field: money for freelance jobs, EXP otherwise; optional)
+[job:shift|Alex|Chef|start]
+[job:shift|Alex|Chef|end|6.5]
 [job:done|Alex|Chef|tasting menu]
 [job:fail|Alex|Chef|Order supplies]
 [job:stress|Alex|Chef|+8]      (only with the stress/satisfaction option on)
@@ -62,7 +71,7 @@ When a job exists, the model is asked to add hidden tags at the end of its repli
 
 After each character reply the extension applies the tags and removes them from the message, so they never stay in the chat or the context. The **Recent changes** list at the bottom of the panel shows what each tag did. Turn this off with **Track job events from the chat** in the settings.
 
-- **Tasks:** new tasks appear in the job; done tasks pay out (into the Phone-ST bank for the user); failed tasks apply the penalty. Done and failed tasks are mentioned to the model for the next two replies so characters can react.
+- **Tasks:** new tasks appear in the job; done tasks pay out for freelance jobs (into the Phone-ST bank for the user) or give EXP for regular jobs; failed tasks apply the penalty. Done and failed tasks are mentioned to the model for the next two replies so characters can react.
 - **Overdue:** with Phone-ST's story date available, open tasks past their due date (plus grace days) are failed automatically. Deadlines pause while the character is on leave.
 - **Penalty for a failed task** (all adjustable in the settings): promotion progress lost, stress added, satisfaction lost, and an optional fine as a percentage of the task pay.
 - **Promotion:** each job has a progress meter. Completed tasks fill it, failures drain it. At 100% a notification appears and the model is told a promotion is available. Promote from the panel (new title and raise %) or let the model do it with `[job:promoted|…]`.

@@ -5,7 +5,7 @@ import * as ST from '../../../../script.js';
 import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
-const VERSION = '0.2.1';
+const VERSION = '0.3.0';
 const LS_OPACITY = 'jobsext_opacity';
 const LS_FAB = 'jobsext_fab_pos';
 
@@ -78,6 +78,13 @@ const I18N = {
         settingsTip: 'Settings', back: 'Back',
         resetFab: 'Reset floating button position', fabReset: 'Floating button reset.',
         s_display: 'Display', dm_auto: 'Auto (popup window on phones)', dm_floating: 'Floating panel', dm_popup: 'Popup window', uiDiag: 'Interface diagnostics', uiDiagHint: 'Copy this and send it to the developer if the panel or button does not show.',
+        apply: 'Apply', boardTitle: 'Job board', searchBtn: 'Search', kwPh: 'Field, skills or keywords (optional)', fAny: 'Any', fMode: 'Work mode', fIns: 'Insurance included', fMinPay: 'Min pay / month', fMinVac: 'Min vacation days', countLbl: 'Jobs to find',
+        tf_any: 'Any', tf_standard: 'Full-time', tf_parttime: 'Part-time', tf_teen: 'Teen', tf_freelance: 'Freelance', tf_adult: 'Adult 18+', results: 'Results', noMatch: 'Nothing matched the filters.', est: 'estimated',
+        sec_work: 'Work & payday', shiftStart: 'Start shift', shiftEnd: 'End shift', shiftHours: 'Hours', shiftHoursDefault: 'Default shift length (hours)', onShift: 'On shift', shiftsDone: 'Shifts', hoursTotal: 'Hours', expLbl: 'EXP',
+        autoPay: 'Pay automatically on payday', nextPay: 'Next payday', lastPaid: 'Last payday (cycle start)', needDate: 'Automatic payday needs the Phone-ST story date (Phone sync → Story date).',
+        paidOnShift: 'Paid automatically when a shift ends.', paidPerTask: 'Freelance work is paid per task.', taskHintPay: 'Freelance tasks pay money when done.', taskHintExp: 'Regular-job tasks are not paid separately: they give EXP, which also fills promotion progress.',
+        s_autoPay: 'Pay salaries automatically on payday (story date)', s_taskExp: 'Default EXP per task (regular jobs)', p_shift: 'shift',
+        log_shift_start: 'shift started', log_shift_end: 'shift ended', log_payday: 'payday', log_exp: 'EXP', noShiftLeave: 'Cannot start a shift while on leave.',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -145,6 +152,13 @@ const I18N = {
         settingsTip: 'Настройки', back: 'Назад',
         resetFab: 'Сбросить положение плавающей кнопки', fabReset: 'Плавающая кнопка сброшена.',
         s_display: 'Отображение', dm_auto: 'Авто (всплывающее окно на телефонах)', dm_floating: 'Плавающая панель', dm_popup: 'Всплывающее окно', uiDiag: 'Диагностика интерфейса', uiDiagHint: 'Скопируйте и отправьте разработчику, если панель или кнопка не отображаются.',
+        apply: 'Откликнуться', boardTitle: 'Биржа вакансий', searchBtn: 'Искать', kwPh: 'Сфера, навыки или ключевые слова (необязательно)', fAny: 'Любой', fMode: 'Формат работы', fIns: 'Со страховкой', fMinPay: 'Мин. оплата / месяц', fMinVac: 'Мин. дней отпуска', countLbl: 'Сколько вакансий',
+        tf_any: 'Любые', tf_standard: 'Полный день', tf_parttime: 'Подработка', tf_teen: 'Для подростков', tf_freelance: 'Фриланс', tf_adult: '18+', results: 'Результаты', noMatch: 'Ничего не подошло под фильтры.', est: 'оценка',
+        sec_work: 'Работа и день зарплаты', shiftStart: 'Начать смену', shiftEnd: 'Закончить смену', shiftHours: 'Часов', shiftHoursDefault: 'Длина смены по умолчанию (часов)', onShift: 'На смене', shiftsDone: 'Смен', hoursTotal: 'Часов', expLbl: 'Опыт',
+        autoPay: 'Платить автоматически в день зарплаты', nextPay: 'Следующая зарплата', lastPaid: 'Последняя зарплата (начало цикла)', needDate: 'Для автоматической зарплаты нужна сюжетная дата Phone-ST (синхронизация → сюжетная дата).',
+        paidOnShift: 'Оплата приходит автоматически после окончания смены.', paidPerTask: 'Фриланс оплачивается за задания.', taskHintPay: 'Задания фриланса приносят деньги при выполнении.', taskHintExp: 'Задания на обычной работе отдельно не оплачиваются: они дают опыт, который также заполняет прогресс повышения.',
+        s_autoPay: 'Платить зарплату автоматически в день зарплаты (сюжетная дата)', s_taskExp: 'Опыт за задание по умолчанию (обычная работа)', p_shift: 'смена',
+        log_shift_start: 'смена началась', log_shift_end: 'смена закончилась', log_payday: 'день зарплаты', log_exp: 'опыт', noShiftLeave: 'Нельзя начать смену во время отпуска.',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -155,7 +169,7 @@ const LEAVE_STATE = { vacation: 'vacation', sick: 'sick', maternity: 'maternity'
 const STATE_LEAVE = { vacation: 'vacation', sick: 'sick', maternity: 'maternity', paternity: 'paternity', onleave: 'unpaid' };
 const JOB_TYPES = ['standard', 'parttime', 'teen', 'freelance', 'adult'];
 const MODES = ['onsite', 'remote', 'hybrid', 'anywhere'];
-const PERIODS = ['hour', 'day', 'week', 'month', 'year', 'commission', 'project'];
+const PERIODS = ['hour', 'shift', 'day', 'week', 'month', 'year', 'commission', 'project'];
 const RATES = ['hour', 'project', 'word', 'commission'];
 const TASK_STATUS = ['pending', 'active', 'done', 'failed', 'cancelled'];
 const CURRENCIES = ['₽', '$', '€', '£', '¥'];
@@ -169,6 +183,8 @@ const DEFAULTS = {
     displayMode: 'auto',
     phone: { all: true, bank: true, calendar: true, contacts: true, storyDate: true },
     tags: true,
+    taskExp: 10,
+    autoPay: true,
     newChatsOff: false,
     worlds: [],
     promoDone: 10,
@@ -270,6 +286,7 @@ function newJob(p = {}) {
         leave: newLeave(p.vacationDays != null && p.vacationDays !== '' ? num(p.vacationDays) : 14), tasks: [], awareness: { mode: 'everyone', who: [] },
         commute: '', stress: 50, satisfaction: 50, coworkers: [], summary: '', description: p.description || '',
         reducedPct: S().reducedPct, promo: { enabled: (p.type || 'standard') !== 'freelance', meter: 0, level: 1, raise: S().promoRaise },
+        exp: 0, autoPay: true, lastPaid: rpDate || '', payDay: rpDate ? Number(rpDate.slice(8, 10)) : 0, shift: { active: false, startMin: null, hours: 8, count: 0, totalHours: 0, lastDay: '' },
     };
     return j;
 }
@@ -300,7 +317,12 @@ function ensurePeople() {
             if (j.insurance === undefined) j.insurance = false;
             if (j.reducedPct === undefined) j.reducedPct = S().reducedPct;
             if (!j.promo) j.promo = { enabled: j.type !== 'freelance', meter: 0, level: 1, raise: S().promoRaise };
-            for (const k of j.tasks) { if (k.show === undefined) k.show = 0; if (k.penalized === undefined) k.penalized = false; }
+            if (j.exp === undefined) j.exp = 0;
+            if (j.autoPay === undefined) j.autoPay = true;
+            if (j.lastPaid === undefined) j.lastPaid = '';
+            if (j.payDay === undefined) j.payDay = /^\d{4}-\d{2}-\d{2}$/.test(j.lastPaid) ? Number(j.lastPaid.slice(8, 10)) : 0;
+            if (!j.shift) j.shift = { active: false, startMin: null, hours: 8, count: 0, totalHours: 0, lastDay: '' };
+            for (const k of j.tasks) { if (k.show === undefined) k.show = 0; if (k.penalized === undefined) k.penalized = false; if (k.exp === undefined) k.exp = 0; }
             j.coworkers = (j.coworkers || []).filter((id) => P[id]);
             for (const e of j.leave.entries) { if (e.active === undefined) e.active = !e.end && !e.planned; if (e.calId === undefined) e.calId = ''; }
         }
@@ -419,6 +441,14 @@ const PhoneBridge = {
         const mods = await loadPhoneMods();
         try { return mods?.plans?.rpToday?.() || null; } catch { return null; }
     },
+    async rpClock() {
+        const mods = await loadPhoneMods();
+        try {
+            const d = mods?.state?.getRpDateTime?.();
+            if (d && Number.isFinite(d.year) && Number.isFinite(d.hours)) return Date.UTC(d.year, d.month - 1, d.day, d.hours, d.minutes || 0) / 60000;
+        } catch { /* ignore */ }
+        return null;
+    },
     // Calendar = Phone-ST "plans" (single-date entries on the story calendar)
     async addCalendarEvent({ title, date, who = 'user' }) {
         if (!date) return null;
@@ -468,7 +498,8 @@ async function refreshBank() {
     bank.installed = avail && ph.bank;
     bank.cal = avail && ph.calendar;
     bank.contacts = avail && ph.contacts;
-    bank.balance = null; bank.currency = null; rpDate = null;
+    bank.balance = null; bank.currency = null;
+    if (!(avail && ph.storyDate)) rpDate = null;
     try {
         if (bank.installed) { bank.balance = await PhoneBridge.getBalance(); bank.currency = await PhoneBridge.getCurrency(); }
         if (avail && ph.storyDate) rpDate = await PhoneBridge.rpToday();
@@ -561,8 +592,18 @@ async function taskStatusChanged(p, j, k, prev, why) {
     k.show = (k.status === 'done' || k.status === 'failed') ? 2 : 0;
     notify(t('evTask'), `${j.title}: ${k.desc} → ${t('ts_' + k.status)}`);
     if (k.status === 'done') {
-        bumpPromo(p, j, Number(S().promoDone) || 0, `"${k.desc}"`);
-        if (!k.paid && Number(k.pay) > 0) { k.paid = true; await credit(p, j, k.pay, `Task: ${k.desc}`); }
+        if (isFreelance(j)) {
+            // freelance work is paid per task / project
+            if (!k.paid && Number(k.pay) > 0) { k.paid = true; await credit(p, j, k.pay, `Task: ${k.desc}`); }
+        } else {
+            // regular jobs: tasks are not paid separately, they give EXP (which also fills promotion progress)
+            const gain = Number(k.exp) || 0;
+            if (gain > 0) {
+                j.exp = (Number(j.exp) || 0) + gain;
+                addLog(`✨ ${p.name} · ${j.title}: +${gain} ${t('log_exp')}`);
+                bumpPromo(p, j, gain, `"${k.desc}"`);
+            }
+        }
     } else if (k.status === 'failed') await applyPenalty(p, j, k, why);
 }
 
@@ -580,6 +621,96 @@ async function checkOverdue() {
     }
     if (changed) save();
     return changed;
+}
+
+const isFreelance = (j) => j.type === 'freelance';
+function newTask(j, over = {}) {
+    return { id: uid(), desc: '', due: '', pay: 0, exp: isFreelance(j) ? 0 : (Number(S().taskExp) || 10), status: 'pending', paid: false, show: 0, penalized: false, ...over };
+}
+
+const round2 = (n) => Math.round(n * 100) / 100;
+
+async function startShift(p, j) {
+    if (j.shift.active || j.state === 'fired') return false;
+    if (isOnLeave(j)) { toastr.warning(t('noShiftLeave')); return false; }
+    j.shift.active = true;
+    j.state = 'working';
+    j.shift.startMin = (bank.detected && S().phone.all && S().phone.storyDate) ? await PhoneBridge.rpClock() : null;
+    notify(t('onShift'), `${p.name}: ${j.title}`);
+    addLog(`⏱ ${p.name} · ${j.title}: ${t('log_shift_start')}`);
+    return true;
+}
+
+// Ends a shift. Hours come from the tag, else from the story clock (if Phone-ST has one), else the default shift length.
+async function endShift(p, j, hoursArg) {
+    if (!j.shift.active) return false;
+    let hours = Number(hoursArg) > 0 ? Number(hoursArg) : 0;
+    if (!hours && j.shift.startMin != null) {
+        const end = await PhoneBridge.rpClock();
+        if (end != null && end > j.shift.startMin) hours = Math.round((end - j.shift.startMin) / 15) / 4;
+    }
+    if (!hours) hours = Number(j.shift.hours) || 8;
+    hours = Math.min(24, Math.max(0.25, hours));
+    j.shift.active = false; j.shift.startMin = null;
+    j.shift.count = (Number(j.shift.count) || 0) + 1;
+    j.shift.totalHours = round2((Number(j.shift.totalHours) || 0) + hours);
+    j.state = 'offduty';
+    // hourly / per-shift / daily pay is paid when the shift ends
+    let amount = 0;
+    const day = rpDate;
+    const base = Number(j.salary.amount) || 0, f = leaveFactor(j), per = j.salary.period;
+    if (!isFreelance(j) && base > 0) {
+        if (per === 'hour') amount = base * hours * f;
+        else if (per === 'shift') amount = base * f;
+        else if (per === 'day' && !(day && j.shift.lastDay === day)) { amount = base * f; j.shift.lastDay = day || ''; }
+    }
+    addLog(`⏱ ${p.name} · ${j.title}: ${t('log_shift_end')} (${hours} h)${amount > 0 ? ' · ' + fmt(amount, effCur(p, j)) : ''}`);
+    if (amount > 0) await credit(p, j, amount, `Shift (${hours} h)`);
+    return true;
+}
+
+function addMonths(d, n, dayOverride) {
+    const [y, m, d0] = d.split('-').map(Number);
+    const day = dayOverride > 0 ? dayOverride : d0;
+    const first = new Date(Date.UTC(y, m - 1 + n, 1));
+    const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+    first.setUTCDate(Math.min(day, last));
+    return first.toISOString().slice(0, 10);
+}
+function nextPayDate(j) {
+    if (isFreelance(j) || !DATE_RE.test(j.lastPaid || '')) return null;
+    switch (j.salary.period) {
+        case 'week': return addDays(j.lastPaid, 7);
+        case 'month': return addMonths(j.lastPaid, 1, j.payDay);
+        case 'year': return addMonths(j.lastPaid, 12, j.payDay);
+        default: return null;
+    }
+}
+
+// Weekly / monthly / yearly salaries are paid on the story calendar (needs Phone-ST's story date)
+async function checkPayday() {
+    if (!isOn() || !S().autoPay || !rpDate || !hasChat()) return false;
+    const today = rpDate;
+    let changed = false;
+    for (const p of Object.values(D().people)) for (const j of p.jobs) {
+        if (isFreelance(j) || j.state === 'fired' || !j.autoPay || !(Number(j.salary.amount) > 0)) continue;
+        if (!['week', 'month', 'year'].includes(j.salary.period)) continue;
+        if (!DATE_RE.test(j.lastPaid || '')) { j.lastPaid = today; j.payDay = Number(today.slice(8, 10)); changed = true; continue; }
+        let guard = 0, next;
+        while ((next = nextPayDate(j)) && next <= today && guard++ < 24) {
+            j.lastPaid = next; changed = true;
+            addLog(`💵 ${p.name} · ${j.title}: ${t('log_payday')} ${next}`);
+            await credit(p, j, Number(j.salary.amount) * leaveFactor(j), `Salary ${next}`);
+        }
+    }
+    if (changed) save();
+    return changed;
+}
+
+async function tick() {
+    const a = await checkOverdue();
+    const b = await checkPayday();
+    return a || b;
 }
 
 async function promote(p, j, title, raise) {
@@ -638,7 +769,8 @@ async function applyOp({ kind, args }) {
         case 'task': {
             if (!a || isOnLeave(j) || j.tasks.length >= 30) return;
             if (findTask(j, a, OPEN) && similar(findTask(j, a, OPEN).desc, a) >= 0.8) return; // duplicate
-            j.tasks.push({ id: uid(), desc: a.slice(0, 200), due: DATE_RE.test(b || '') ? b : '', pay: num(c), status: 'active', paid: false, show: 0, penalized: false });
+            const reward = isFreelance(j) ? { pay: num(c) } : (num(c) > 0 ? { exp: num(c) } : {});
+            j.tasks.push(newTask(j, { desc: a.slice(0, 200), due: DATE_RE.test(b || '') ? b : '', status: 'active', ...reward }));
             addLog(`📋 ${tag}: ${t('log_task')} "${a}"`);
             return;
         }
@@ -666,6 +798,11 @@ async function applyOp({ kind, args }) {
             const before = j.promo.meter;
             if ('abs' in d) bumpPromo(p, j, clamp100(d.abs) - before, 'chat'); else bumpPromo(p, j, d.delta, 'chat');
             addLog(`⭐ ${tag}: ${t('log_promo')} ${before}% → ${j.promo.meter}%`);
+            return;
+        }
+        case 'shift': {
+            if (/^(start|begin)/i.test(a || '')) await startShift(p, j);
+            else if (/^(end|finish|stop)/i.test(a || '')) await endShift(p, j, num(b));
             return;
         }
         case 'promoted': {
@@ -702,8 +839,9 @@ function trackingInstructions() {
     const s = S();
     const anyPromo = visiblePeople().some((p) => p.jobs.some((j) => j.promo?.enabled && jobVisibleFor(p, j)));
     const L = [`[Job tracking: when job events happen in your reply, add hidden tags on their own lines at the very end of the reply. They are stripped automatically, so never mention or explain them. Use the exact names and job titles above${rpDate ? `. Story date: ${rpDate}; write dates as YYYY-MM-DD` : ''}.`,
-        '[job:task|Person|Job|task text|due date|pay] a new work task is given',
-        '[job:done|Person|Job|task text]  [job:fail|Person|Job|task text]  [job:cancel|Person|Job|task text]'];
+        '[job:task|Person|Job|task text|due date|reward] a new work task is given (reward: money for freelance jobs, EXP for regular jobs; optional)',
+        '[job:done|Person|Job|task text]  [job:fail|Person|Job|task text]  [job:cancel|Person|Job|task text]',
+        '[job:shift|Person|Job|start]  [job:shift|Person|Job|end|hours worked] when a character begins or finishes a work shift (hourly, per-shift and daily pay is paid when the shift ends)'];
     if (s.opt.sliders) L.push('[job:stress|Person|Job|+N or -N]  [job:sat|Person|Job|+N or -N] (0-100 scale, small steps)');
     if (anyPromo) L.push('[job:promo|Person|Job|+N or -N] progress toward a promotion;  [job:promoted|Person|Job|new title|raise %] only when a promotion really happens');
     L.push('Only tag real changes.]');
@@ -828,13 +966,72 @@ function chatText(n = 20) {
 const outLang = () => (S().lang === 'auto' ? 'the same language as the chat/character card' : I18N[curLang()].langName);
 
 const KIND_HINT = {
+    any: 'jobs of any kind (full-time, part-time or freelance)',
     standard: 'ordinary full-time jobs',
     parttime: 'part-time jobs',
     teen: 'age-appropriate casual jobs for a teenager (no hazardous or adult work)',
-    adult: 'explicit adult-industry and sex-work occupations for adult characters, for example: prostitute / sex worker, escort, stripper / exotic dancer, cam model, adult-film performer, dominatrix, brothel or club hostess, erotic masseuse, sugar-dating companion, phone-sex operator. Be frank and uncensored: name each job honestly and describe what the work actually involves, the clientele, the venue and the working conditions. All characters involved are consenting adults'
+    freelance: 'freelance / commission gigs paid per project, per hour, per word or per commission',
+    adult: 'explicit adult-industry and sex-work occupations for adult characters, for example: prostitute / sex worker, escort, stripper / exotic dancer, cam model, adult-film performer, dominatrix, brothel or club hostess, erotic masseuse, sugar-dating companion, phone-sex operator. Be frank and uncensored: name each job honestly and describe what the work actually involves, the clientele, the venue and the working conditions. All characters involved are consenting adults',
 };
 
-const JOB_JSON_SPEC = 'title, employer, category, mode (onsite|remote|hybrid|anywhere), schedule, amount (a plain number greater than 0, never text), period (hour|day|week|month|year|project), vacation_days (integer paid vacation days per year), insurance (true or false), description';
+const JOB_JSON_SPEC = 'title, employer, category, mode (onsite|remote|hybrid|anywhere), schedule, amount (REQUIRED: a plain number greater than 0, never text or a range), period (hour|shift|day|week|month|year|project; for freelance: hour|project|word|commission), vacation_days (integer paid vacation days per year, 0 for freelance), insurance (true or false), description';
+
+// ---- salary handling: accept different key names, retry once, then estimate ----
+const PAY_KEYS = ['amount', 'salary', 'pay', 'wage', 'rate', 'price', 'income', 'compensation'];
+function periodFromText(txt) {
+    const m = String(txt || '').toLowerCase();
+    if (/hour|\/h\b|\bhr\b|час/.test(m)) return 'hour';
+    if (/shift|смен/.test(m)) return 'shift';
+    if (/day|daily|день|дн/.test(m)) return 'day';
+    if (/week|нед/.test(m)) return 'week';
+    if (/year|annual|год/.test(m)) return 'year';
+    if (/month|мес/.test(m)) return 'month';
+    if (/project|проект/.test(m)) return 'project';
+    if (/commission|заказ/.test(m)) return 'commission';
+    if (/word|слов/.test(m)) return 'word';
+    return '';
+}
+function normalizeOffer(x, kind) {
+    const o = { ...x };
+    const raw = PAY_KEYS.map((k) => x[k]).find((v) => v != null && String(v).trim() !== '' && num(v) > 0);
+    o.amount = num(raw);
+    const known = (v) => PERIODS.includes(v) || RATES.includes(v);
+    if (!known(o.period)) o.period = periodFromText(x.period) || periodFromText(raw) || periodFromText(x.salary) || '';
+    o.vacation_days = num(o.vacation_days);
+    o.insurance = truthy(o.insurance);
+    o.type = kind === 'any' ? (JOB_TYPES.includes(x.type) ? x.type : 'standard') : kind;
+    return o;
+}
+const BASE_MONTHLY = { standard: 3000, parttime: 1200, teen: 500, freelance: 800, adult: 4000 };
+function estimateAmount(o) {
+    const monthly = BASE_MONTHLY[o.type] || 2500;
+    const per = o.period || (o.type === 'freelance' ? 'project' : (o.type === 'parttime' || o.type === 'teen') ? 'hour' : 'month');
+    const conv = { hour: monthly / 160, shift: monthly / 20, day: monthly / 21, week: monthly / 4.3, month: monthly, year: monthly * 12, project: monthly / 3, commission: monthly / 6, word: 0.1 };
+    const v = conv[per] ?? monthly;
+    o.period = per;
+    o.amount = v > 100 ? Math.round(v / 50) * 50 : Math.max(1, Math.round(v * 10) / 10);
+    o.estimated = true;
+}
+async function ensureSalaries(offers, cur, sys) {
+    const missing = offers.filter((o) => !(o.amount > 0));
+    if (missing.length) {
+        try {
+            const wt = worldText();
+            const prompt = `These job offers have no salary yet. Give each a realistic salary in ${cur}${wt ? ` for this world (${wt})` : ''}. Reply with ONLY a JSON array in the same order, one object per job: {"title": "...", "amount": number greater than 0, "period": "hour|shift|day|week|month|year|project"}.\n${JSON.stringify(missing.map((o) => ({ title: o.title, employer: o.employer, type: o.type, description: o.description })))}`;
+            const fixed = parseJsonArray(await llm(prompt, sys));
+            missing.forEach((o, i) => {
+                const f = fixed[i];
+                const amt = f ? num(f.amount ?? f.salary ?? f.pay) : 0;
+                if (amt > 0) { o.amount = amt; o.period = (PERIODS.includes(f.period) || RATES.includes(f.period)) ? f.period : (periodFromText(f.period) || o.period || 'month'); }
+            });
+        } catch (e) { console.warn('[Jobs] salary retry failed', e); }
+    }
+    for (const o of offers) if (!(o.amount > 0)) estimateAmount(o);
+}
+function monthlyEq(amount, period) {
+    const m = { hour: 160, shift: 20, day: 21, week: 4.3, month: 1, year: 1 / 12 }[period];
+    return m ? amount * m : null;
+}
 
 function resumeText(p) {
     const r = p.resume || {};
@@ -842,14 +1039,28 @@ function resumeText(p) {
     return `Resume of ${p.name}:\nSkills/abilities: ${r.skills || '-'}\nLooking for: ${r.seeking || '-'}\n`;
 }
 
-async function searchIdeas(kind) {
+async function searchIdeas(f) {
     const p = D().people[ui.selected];
     const cur = worldCur();
+    const kind = f.type in KIND_HINT ? f.type : 'any';
+    const count = Math.max(1, Math.min(12, Math.round(Number(f.count)) || 4));
     const sys = 'You generate realistic job offers for a roleplay character. Reply with ONLY a JSON array, no commentary.';
     const wt = worldText();
-    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${wt ? `World/setting: ${wt}\nThe jobs must fit this world: adapt occupation names, employers and pay to it.\n` : ''}${resumeText(p)}Context:\n${cardText()}\n\nSuggest 4 ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
-    const arr = parseJsonArray(await llm(prompt, sys));
-    return arr.map((x) => ({ ...x, amount: num(x.amount), vacation_days: num(x.vacation_days), insurance: truthy(x.insurance), type: kind }));
+    const allowed = ['standard', 'parttime', 'freelance', ...(canTeen(p) ? ['teen'] : []), ...(canAdult(p) ? ['adult'] : [])];
+    const cons = [];
+    if (f.mode && f.mode !== 'any') cons.push(`work mode: ${f.mode}`);
+    if (f.insurance) cons.push('health insurance included');
+    if (Number(f.minVac) > 0) cons.push(`at least ${Number(f.minVac)} paid vacation days per year`);
+    if (Number(f.minPay) > 0) cons.push(`pay of at least ${Number(f.minPay)} ${cur} per month (or the equivalent)`);
+    if ((f.keyword || '').trim()) cons.push(`field / keywords: ${f.keyword.trim()}`);
+    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${wt ? `World/setting: ${wt}\nThe jobs must fit this world: adapt occupation names, employers and pay to it.\n` : ''}${resumeText(p)}Context:\n${cardText()}\n\nSuggest ${count} ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.${kind === 'any' ? `\nAlso include a "type" key, one of: ${allowed.join('|')}.` : ''}${cons.length ? `\nRequirements: ${cons.join('; ')}.` : ''}\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
+    let out = parseJsonArray(await llm(prompt, sys)).map((x) => normalizeOffer(x, kind));
+    out = out.filter((o) => (o.type !== 'adult' || canAdult(p)) && (o.type !== 'teen' || canTeen(p)));
+    await ensureSalaries(out, cur, sys);
+    return out.filter((o) => (!f.mode || f.mode === 'any' || o.mode === f.mode)
+        && (!f.insurance || o.insurance)
+        && (!(Number(f.minVac) > 0) || num(o.vacation_days) >= Number(f.minVac))
+        && (!(Number(f.minPay) > 0) || monthlyEq(o.amount, o.period) == null || monthlyEq(o.amount, o.period) >= Number(f.minPay)));
 }
 
 async function scanJobs() {
@@ -858,7 +1069,7 @@ async function scanJobs() {
     const phone = bank.installed ? (await PhoneBridge.getMessages(15)).join('\n') : '';
     const sys = 'You extract jobs mentioned in roleplay text. Reply with ONLY a JSON array, no commentary.';
     const prompt = `Known people: ${names}.\nCharacter card:\n${cardText()}\n\nRecent chat:\n${chatText()}\n\n${phone ? 'Phone messages:\n' + phone + '\n\n' : ''}Find jobs/occupations that any known person currently has. JSON array of objects with keys: owner (a known person's name, default "${p.name}"), type (standard|parttime|teen|freelance${S().adult ? '|adult' : ''}), ${JOB_JSON_SPEC}. Use 0 or false when unknown. Write text values in ${outLang()}.`;
-    return parseJsonArray(await llm(prompt, sys)).map((x) => ({ ...x, amount: num(x.amount), vacation_days: x.vacation_days, insurance: truthy(x.insurance) }));
+    return parseJsonArray(await llm(prompt, sys)).map((x) => ({ ...normalizeOffer(x, 'any'), owner: x.owner, vacation_days: x.vacation_days }));
 }
 
 /* ------------------------------------------------------------------ */
@@ -880,12 +1091,14 @@ function buildPrompt() {
         const r = p.resume;
         if (r && (r.skills || r.seeking) && canWork(p)) resumes.push(`- ${p.name} — skills: ${String(r.skills || '-').slice(0, 400)}; looking for: ${String(r.seeking || '-').slice(0, 300)}`);
         for (const j of p.jobs.filter((x) => jobVisibleFor(p, x))) {
-            let l = `- ${p.name}: ${j.title}${j.employer ? ' at ' + j.employer : ''} [${j.category || j.type}; ${t('st_' + j.state)}; ${j.mode}`;
+            let l = `- ${p.name}: ${j.title}${j.employer ? ' at ' + j.employer : ''} [${j.category || j.type}; ${t('st_' + j.state)}${j.shift?.active ? ' (on shift)' : ''}; ${j.mode}`;
             if (j.schedule) l += `; schedule: ${j.schedule}`;
             if (j.salary.amount) l += `; pay: ${fmt(j.salary.amount, effCur(p, j))}/${j.type === 'freelance' ? j.salary.rateType : j.salary.period}`;
             l += `; vacation ${j.leave.balances.vacation.allowance} days/yr; insurance: ${j.insurance ? 'yes' : 'no'}]. Known by: ${knownBy(p, j)}.`;
             const cw = j.coworkers.map((id) => P[id]?.name).filter(Boolean);
             if (cw.length) l += ` Coworkers: ${cw.join(', ')}.`;
+            const np = nextPayDate(j);
+            if (np) l += ` Next payday: ${np}.`;
             if (isOnLeave(j)) {
                 l += ` On ${t('st_' + j.state).toLowerCase()} now: no work tasks; may mention it.`;
                 const act = j.leave.entries.find((e) => e.active);
@@ -894,7 +1107,7 @@ function buildPrompt() {
                 if (act?.reason && j.state === 'sick') l += ` Reason: ${act.reason}.`;
             } else {
                 const open = j.tasks.filter(isOpen);
-                if (open.length) l += ` Tasks: ${open.map((x) => `${x.desc}${x.due ? ` (due ${x.due}${isOverdue(x) ? ', OVERDUE' : ''})` : ''}${x.pay ? ` [pay ${x.pay}]` : ''}`).join('; ')}.`;
+                if (open.length) l += ` Tasks: ${open.map((x) => `${x.desc}${x.due ? ` (due ${x.due}${isOverdue(x) ? ', OVERDUE' : ''})` : ''}${isFreelance(j) ? (x.pay ? ` [pay ${x.pay}]` : '') : (x.exp ? ` [exp ${x.exp}]` : '')}`).join('; ')}.`;
             }
             const recent = j.tasks.filter((x) => x.show > 0 && (x.status === 'done' || x.status === 'failed'));
             if (recent.length) l += ` Recent: ${recent.map((x) => `"${x.desc}" ${x.status === 'done' ? 'completed' : 'FAILED (consequences apply)'}`).join('; ')}.`;
@@ -941,7 +1154,11 @@ function byId(id) {
 }
 const LS_SETSEC = 'jobsext_setsec';
 function loadSetSec() { try { return JSON.parse(localStorage.getItem(LS_SETSEC) || 'null') || { general: true }; } catch { return { general: true }; } }
-const ui = { view: 'main', setSec: loadSetSec(), open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
+const LS_FILTERS = 'jobsext_filters';
+const FILTER_DEFAULTS = { type: 'any', mode: 'any', insurance: false, minPay: 0, minVac: 0, keyword: '', count: 4 };
+function loadFilters() { try { return { ...FILTER_DEFAULTS, ...(JSON.parse(localStorage.getItem(LS_FILTERS) || 'null') || {}) }; } catch { return { ...FILTER_DEFAULTS }; } }
+const saveFilters = () => { try { localStorage.setItem(LS_FILTERS, JSON.stringify(ui.filters)); } catch { /* ignore */ } };
+const ui = { filters: loadFilters(), view: 'main', setSec: loadSetSec(), open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
 
 function opacity() { const v = parseFloat(localStorage.getItem(LS_OPACITY)); return Number.isNaN(v) ? 1 : v; }
 
@@ -968,9 +1185,10 @@ function salaryLine(p, j) {
     return `${fmt(j.salary.amount, effCur(p, j))}/${t(j.type === 'freelance' ? 'r_' + j.salary.rateType : 'p_' + j.salary.period)}`;
 }
 
+const SEC_OPEN = new Set(['pay', 'work']);
 function sec(j, name, icon, title, html, badge = '') {
     const key = `${j.id}:${name}`;
-    const open = ui.sec[key] ?? (name === 'pay');
+    const open = ui.sec[key] ?? SEC_OPEN.has(name);
     return `<div class="jx-sec"><div class="jx-sh" data-a="sec" data-j="${j.id}" data-sec="${name}"><span>${icon} ${esc(title)}</span><span class="jx-sbadge">${badge}</span><span class="jx-chev">${open ? '▾' : '▸'}</span></div>${open ? `<div class="jx-sb">${html}</div>` : ''}</div>`;
 }
 
@@ -1013,13 +1231,33 @@ function renderLeave(j) {
     return h;
 }
 
+function renderWork(p, j) {
+    const sh = j.shift;
+    const per = j.salary.period;
+    let h = `<div class="jx-row">${sh.active ? chip('● ' + t('onShift'), 'jx-c-ok') : ''}`;
+    h += sh.active
+        ? `<label class="jx-f jx-inline"><span>${t('shiftHours')}</span><input type="number" step="0.25" min="0" class="jx-sh-hours" placeholder="auto" style="width:76px"></label><button class="menu_button jx-hot" data-a="shiftEnd" data-j="${j.id}">■ ${t('shiftEnd')}</button>`
+        : `<button class="menu_button" data-a="shiftStart" data-j="${j.id}">▶ ${t('shiftStart')}</button>`;
+    h += '</div>';
+    h += `<div class="jx-chips">${chip(t('shiftsDone') + ': ' + (sh.count || 0))}${chip(t('hoursTotal') + ': ' + (sh.totalHours || 0))}${chip('✨ ' + t('expLbl') + ': ' + (j.exp || 0))}</div>`;
+    h += `<div class="jx-grid">${fld(j, 'shift.hours', t('shiftHoursDefault'), 'num')}</div>`;
+    if (isFreelance(j)) h += `<div class="jx-hint">${t('paidPerTask')}</div>`;
+    else if (['week', 'month', 'year'].includes(per)) {
+        h += `<div class="jx-grid">${fld(j, 'autoPay', t('autoPay'), 'check')}${fld(j, 'lastPaid', t('lastPaid'), 'date')}</div>
+          <div class="jx-chips">${chip('💵 ' + t('nextPay') + ': ' + (nextPayDate(j) || '—'))}</div>${rpDate ? '' : `<div class="jx-hint">${t('needDate')}</div>`}`;
+    } else h += `<div class="jx-hint">${t('paidOnShift')}</div>`;
+    return h;
+}
+
 function renderTasks(j) {
-    let h = `<button class="menu_button" data-a="addTask" data-j="${j.id}">${t('addTask')}</button>`;
+    let h = `<button class="menu_button" data-a="addTask" data-j="${j.id}">${t('addTask')}</button><div class="jx-hint">${t(isFreelance(j) ? 'taskHintPay' : 'taskHintExp')}</div>`;
     if (isOnLeave(j)) h += `<div class="jx-warn">${t('noLeaveTasks')}</div>`;
     j.tasks.forEach((k, i) => {
         h += `<div class="jx-task"><input type="text" data-j="${j.id}" data-f="tasks.${i}.desc" value="${esc(k.desc)}" placeholder="${t('desc')}">
         <input type="date" data-j="${j.id}" data-f="tasks.${i}.due" value="${esc(k.due)}" title="${t('due')}">
-        <input type="number" step="any" data-j="${j.id}" data-f="tasks.${i}.pay" data-n="1" value="${esc(k.pay)}" title="${t('pay')}" style="width:80px">
+        ${isFreelance(j)
+          ? `<input type="number" step="any" data-j="${j.id}" data-f="tasks.${i}.pay" data-n="1" value="${esc(k.pay)}" title="${t('pay')}" placeholder="${t('pay')}" style="width:80px">`
+          : `<input type="number" step="any" data-j="${j.id}" data-f="tasks.${i}.exp" data-n="1" value="${esc(k.exp)}" title="EXP" placeholder="EXP" style="width:72px">`}
         <select data-j="${j.id}" data-f="tasks.${i}.status">${opts(TASK_STATUS, k.status, 'ts_')}</select>
         ${k.paid ? chip(t('paid'), 'jx-c-ok') : ''}${isOverdue(k) ? chip('⏰ ' + t('overdue'), 'jx-c-warn') : ''}<button class="menu_button" data-a="delTask" data-j="${j.id}" data-i="${i}">×</button></div>`;
     });
@@ -1032,7 +1270,7 @@ function renderPromo(p, j) {
     if (!pr.enabled) return h;
     h += fld(j, 'promo.meter', t('promoMeter'), 'range');
     h += `<div class="jx-hint">${t('promoHint')}</div>`;
-    h += `<div class="jx-grid">${fld(j, 'promo.raise', t('promoRaise'), 'num')}<label class="jx-f"><span>${t('promoLevel')}</span><input disabled value="${pr.level}"></label></div>`;
+    h += `<div class="jx-grid">${fld(j, 'promo.raise', t('promoRaise'), 'num')}${fld(j, 'exp', t('expLbl'), 'num')}<label class="jx-f"><span>${t('promoLevel')}</span><input disabled value="${pr.level}"></label></div>`;
     h += `<div class="jx-row"><input type="text" class="jx-ptitle" placeholder="${esc(t('promoTitle'))}"><button class="menu_button ${pr.meter >= 100 ? 'jx-hot' : ''}" data-a="promote" data-j="${j.id}">⭐ ${t('promote')}</button></div>`;
     return h;
 }
@@ -1087,6 +1325,7 @@ function renderJob(p, j) {
           ${fld(j, 'mode', t('mode'), 'select', { html: opts(MODES, j.mode, 'm_') })}
           ${fld(j, 'state', t('state'), 'select', { html: opts(STATES, j.state, 'st_') })}</div>${fld(j, 'schedule', t('schedule'), 'area')}`;
         h += sec(j, 'pay', '💰', t('sec_pay'), paySec);
+        h += sec(j, 'work', '⏱', t('sec_work'), renderWork(p, j), j.shift.active ? '●' : '');
         h += sec(j, 'leave', '🏖', t('sec_leave'), renderLeave(j), j.leave.entries.some((e) => e.planned) ? '📅' : '');
         h += sec(j, 'tasks', '📋', t('sec_tasks'), renderTasks(j), j.tasks.length ? String(j.tasks.length) : '');
         h += sec(j, 'promo', '⭐', t('sec_promo'), renderPromo(p, j), j.promo.enabled ? (j.promo.meter >= 100 ? '!' : j.promo.meter + '%') : '');
@@ -1102,13 +1341,36 @@ function renderJob(p, j) {
     return h + '</div>';
 }
 
+function payLabel(amount, period, type, cur) {
+    if (!amount) return '';
+    if (type === 'freelance' && RATES.includes(period)) return `${fmt(amount, cur)} ${t('r_' + period)}`;
+    return `${fmt(amount, cur)}${PERIODS.includes(period) ? '/' + t('p_' + period) : ''}`;
+}
+
 function ideaCard(x, i) {
     const cur = worldCur();
     return `<div class="jx-idea"><div class="jx-it"><b>${esc(x.title)}</b><span class="jx-dim"> ${esc(x.employer || '')}</span></div>
-      <div class="jx-chips">${x.amount ? chip('💰 ' + esc(fmt(x.amount, cur)) + '/' + esc(t('p_' + x.period) || x.period || ''), 'jx-c-pay') : chip(t('setSalary'), 'jx-c-warn')}
+      <div class="jx-chips">${x.amount ? chip('💰 ' + esc(payLabel(x.amount, x.period, x.type, cur)), 'jx-c-pay') : chip(t('setSalary'), 'jx-c-warn')}${x.estimated ? chip('≈ ' + t('est'), 'jx-c-warn') : ''}
       ${x.vacation_days !== '' && x.vacation_days != null ? chip('🏖 ' + esc(num(x.vacation_days)) + ' ' + t('days')) : ''}
-      ${chip('🛡 ' + (x.insurance ? t('yes') : t('no')), x.insurance ? 'jx-c-ok' : '')}${x.schedule ? chip('🕒 ' + esc(x.schedule)) : ''}${x.mode ? chip(esc(t('m_' + x.mode) || x.mode)) : ''}</div>
-      ${x.description ? `<div class="jx-dim">${esc(x.description)}</div>` : ''}<button class="menu_button" data-a="addIdea" data-i="${i}">＋ ${t('add')}</button></div>`;
+      ${chip('🛡 ' + (x.insurance ? t('yes') : t('no')), x.insurance ? 'jx-c-ok' : '')}${x.schedule ? chip('🕒 ' + esc(x.schedule)) : ''}${x.mode ? chip(esc(t('m_' + x.mode) || x.mode)) : ''}${x.type ? chip(esc(t('tf_' + x.type) || x.type)) : ''}</div>
+      ${x.description ? `<div class="jx-dim">${esc(x.description)}</div>` : ''}<button class="menu_button jx-apply" data-a="addIdea" data-i="${i}">✔ ${t('apply')}</button></div>`;
+}
+
+function renderBoard(p) {
+    const f = ui.filters;
+    const types = ['any', 'standard', 'parttime', ...(canTeen(p) ? ['teen'] : []), 'freelance', ...(canAdult(p) ? ['adult'] : [])];
+    if (!types.includes(f.type)) f.type = 'any';
+    const modes = ['any', ...MODES.filter((m) => m !== 'anywhere')];
+    return `<div class="jx-board"><div class="jx-bh">🔎 ${t('boardTitle')}</div>
+      <div class="jx-searchbar"><input type="text" data-fl="keyword" value="${esc(f.keyword)}" placeholder="${esc(t('kwPh'))}"><button class="menu_button jx-go" data-a="searchBoard">🔎 ${t('searchBtn')}</button></div>
+      <div class="jx-chips jx-filters">${types.map((k) => `<button class="jx-fchip ${f.type === k ? 'jx-on' : ''}" data-a="filterType" data-v="${k}">${k === 'adult' ? '🔞 ' : ''}${esc(t('tf_' + k))}</button>`).join('')}</div>
+      <div class="jx-grid jx-fgrid">
+        <label class="jx-f"><span>${t('fMode')}</span><select data-fl="mode">${modes.map((m) => `<option value="${m}" ${f.mode === m ? 'selected' : ''}>${esc(m === 'any' ? t('fAny') : t('m_' + m))}</option>`).join('')}</select></label>
+        <label class="jx-f"><span>${t('countLbl')}</span><input type="number" min="1" max="12" data-fl="count" data-n="1" value="${esc(f.count)}"></label>
+        <label class="jx-f"><span>${t('fMinPay')}</span><input type="number" min="0" data-fl="minPay" data-n="1" value="${esc(f.minPay)}"></label>
+        <label class="jx-f"><span>${t('fMinVac')}</span><input type="number" min="0" data-fl="minVac" data-n="1" value="${esc(f.minVac)}"></label>
+        <label class="jx-f jx-fc"><input type="checkbox" data-fl="insurance" data-c="1" ${f.insurance ? 'checked' : ''}><span>🛡 ${t('fIns')}</span></label>
+      </div></div>`;
 }
 
 function renderWorld() {
@@ -1188,18 +1450,15 @@ function renderPanel() {
             h += `<label class="jx-f"><span>${t('skills')}</span><textarea rows="3" data-p="resume.skills" placeholder="${esc(t('skillsPh'))}">${esc(p.resume.skills)}</textarea></label>
               <label class="jx-f"><span>${t('seeking')}</span><textarea rows="3" data-p="resume.seeking" placeholder="${esc(t('seekingPh'))}">${esc(p.resume.seeking)}</textarea></label>`;
         }
-        h += '<div class="jx-row jx-search">';
-        h += `<button class="menu_button" data-a="search" data-k="standard">🔎 ${t('sStandard')}</button><button class="menu_button" data-a="search" data-k="parttime">🕑 ${t('sPart')}</button>`;
-        if (canTeen(p)) h += `<button class="menu_button" data-a="search" data-k="teen">🎒 ${t('sTeen')}</button>`;
-        if (canAdult(p)) h += `<button class="menu_button" data-a="search" data-k="adult">🔞 ${t('sAdult')}</button>`;
-        h += `<button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">📡 ${t('scan')}</button></div>`;
+        h += renderBoard(p);
+        h += `<div class="jx-row"><button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">📡 ${t('scan')}</button></div>`;
         if (s.adult && p.group !== 'adult') h += `<div class="jx-hint">${t('adultNeedsAge')}</div>`;
     }
     h += '</div>';
 
     if (s.opt.importExport) h += `<div class="jx-row"><button class="menu_button" data-a="export">⬇ ${t('export')}</button><button class="menu_button" data-a="import">⬆ ${t('import')}</button><input type="file" id="jx_file" accept=".json" hidden></div>`;
     if (ui.busy) h += `<div class="jx-busy">⏳ ${t('searching')}</div>`;
-    if (ui.ideas.length && ui.ideaFor === p.id) h += `<div class="jx-st">${t('ideas')}</div>${ui.ideas.map(ideaCard).join('')}`;
+    if (ui.ideas.length && ui.ideaFor === p.id) h += `<div class="jx-st">${t('results')} (${ui.ideas.length})</div>${ui.ideas.map(ideaCard).join('')}`;
 
     const jobs = p.jobs.filter((j) => jobVisibleFor(p, j));
     h += `<div class="jx-st">💼 ${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-empty">${t('noJobs')}</div>`);
@@ -1245,7 +1504,8 @@ function settingsHtml(inPanel) {
       <div class="menu_button" data-a="diag">${t('diag')}</div>
       <textarea class="text_pole jx-diag" rows="8" readonly hidden placeholder="${esc(t('diagHint'))}"></textarea>`;
     const track = `${chk('tags', t('s_tags'))}<small>${t('s_tagsHint')}</small>
-      ${numf('promoDone', t('s_promoDone'))}${numf('promoRaise', t('s_promoRaise'))}
+      ${numf('taskExp', t('s_taskExp'))}${numf('promoRaise', t('s_promoRaise'))}
+      ${chk('autoPay', t('s_autoPay'))}<small>${t('needDate')}</small>
       ${chk('autoFail', t('s_autoFail'))}${numf('overdueGrace', t('s_grace'))}<small>${t('s_graceHint')}</small>
       <h4>${t('pen')}</h4>${numf('penalty.promo', t('pen_promo'))}${numf('penalty.stress', t('pen_stress'))}${numf('penalty.satisfaction', t('pen_sat'))}${numf('penalty.finePct', t('pen_fine'))}`;
     const optional = Object.keys(DEFAULTS.opt).map((k) => chk('opt.' + k, t('o_' + k))).join('');
@@ -1289,6 +1549,11 @@ async function onChange(e) {
         }
         return afterChange();
     }
+    if (el.dataset.fl) {
+        ui.filters[el.dataset.fl] = el.dataset.c ? el.checked : el.dataset.n ? readNum(el) : el.value;
+        saveFilters();
+        return;
+    }
     if (!el.dataset.f && !el.dataset.p && !el.dataset.s && !el.dataset.w) return;
     const val = el.dataset.c ? el.checked : el.dataset.n ? readNum(el) : el.value;
     if (el.dataset.w) {
@@ -1322,6 +1587,7 @@ async function onChange(e) {
     if (m) await taskStatusChanged(p, j, j.tasks[+m[1]], prev);
     if (path === 'state' && prev !== val && isOnLeave(j)) notify(t('evLeave'), `${p.name}: ${t('st_' + val)}`);
     if (path === 'type' && val === 'freelance') j.salary.period = 'project';
+    if (path === 'lastPaid' && DATE_RE.test(val)) j.payDay = Number(val.slice(8, 10));
     return afterChange();
 }
 
@@ -1367,7 +1633,7 @@ async function onClick(e) {
     switch (a) {
         case 'select': ui.selected = el.dataset.id; ui.ideas = []; return renderPanel();
         case 'resumeToggle': ui.resume = !ui.resume; return renderPanel();
-        case 'sec': { const k = `${j.id}:${el.dataset.sec}`; ui.sec[k] = !(ui.sec[k] ?? el.dataset.sec === 'pay'); return renderPanel(); }
+        case 'sec': { const k = `${j.id}:${el.dataset.sec}`; ui.sec[k] = !(ui.sec[k] ?? SEC_OPEN.has(el.dataset.sec)); return renderPanel(); }
         case 'addNpc': {
             const name = (await ctx.Popup?.show?.input?.(t('npcName'), t('npcName'))) ?? prompt(t('npcName'));
             if (!name) return;
@@ -1434,16 +1700,23 @@ async function onClick(e) {
             return;
         }
         case 'archiveJob': jp.history.push(clone(j)); jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange();
-        case 'search': case 'scan': {
-            const kind = el.dataset.k;
+        case 'filterType': ui.filters.type = el.dataset.v; saveFilters(); return renderPanel();
+        case 'searchBoard': case 'scan': {
             if (!canWork(p)) return;
-            if (a === 'search' && ((kind === 'teen' && !canTeen(p)) || (kind === 'adult' && !canAdult(p)))) return;
+            const f = ui.filters;
+            if (a === 'searchBoard' && ((f.type === 'teen' && !canTeen(p)) || (f.type === 'adult' && !canAdult(p)))) return;
             ui.busy = a; ui.ideas = []; ui.ideaFor = p.id; renderPanel();
             try {
-                ui.ideas = a === 'search' ? await searchIdeas(kind) : await scanJobs();
-                if (!ui.ideas.length) toastr.info(t('noIdeas'));
+                ui.ideas = a === 'searchBoard' ? await searchIdeas(f) : await scanJobs();
+                if (!ui.ideas.length) toastr.info(t(a === 'searchBoard' ? 'noMatch' : 'noIdeas'));
             } catch (err) { console.error(err); toastr.error(t('errApi')); }
             ui.busy = ''; return renderPanel();
+        }
+        case 'shiftStart': await startShift(jp, j); return afterChange();
+        case 'shiftEnd': {
+            const v = el.closest('.jx-row')?.querySelector('.jx-sh-hours')?.value;
+            await endShift(jp, j, num(v));
+            return afterChange();
         }
         case 'addIdea': {
             const x = ui.ideas[+el.dataset.i];
@@ -1453,17 +1726,18 @@ async function onClick(e) {
             let type = JOB_TYPES.includes(x.type) ? x.type : 'standard';
             if (type === 'adult' && !canAdult(owner)) type = 'standard';
             if (type === 'teen' && !canTeen(owner)) type = 'parttime';
+            if (x.type === 'freelance' && RATES.includes(x.period)) type = 'freelance';
             const nj = newJob({
                 title: x.title, employer: x.employer, category: x.category, description: x.description, schedule: x.schedule, type,
                 mode: MODES.includes(x.mode) ? x.mode : 'onsite', period: PERIODS.includes(x.period) ? x.period : 'month',
                 amount: x.amount, vacationDays: x.vacation_days, insurance: x.insurance, currency: worldCur(),
             });
-            if (type === 'freelance') nj.salary.period = 'project';
+            if (type === 'freelance') { nj.salary.period = 'project'; nj.salary.rateType = RATES.includes(x.period) ? x.period : 'project'; nj.promo.enabled = false; }
             owner.jobs.push(nj); ui.exp[nj.id] = true; ui.ideas.splice(+el.dataset.i, 1); return afterChange();
         }
         case 'addTask':
             if (isOnLeave(j)) return toastr.warning(t('noLeaveTasks'));
-            j.tasks.push({ id: uid(), desc: '', due: '', pay: 0, status: 'pending', paid: false, show: 0, penalized: false }); return afterChange();
+            j.tasks.push(newTask(j)); return afterChange();
         case 'delTask': j.tasks.splice(+el.dataset.i, 1); return afterChange();
         case 'payPeriod': {
             await credit(jp, j, (Number(j.salary.amount) || 0) * leaveFactor(j), 'Salary');
@@ -1561,7 +1835,7 @@ async function openPanelInner() {
     showPanel(true);
     if (isOn()) {
         await refreshBank();
-        if (hasChat()) { ensurePeople(); await checkOverdue(); }
+        if (hasChat()) { ensurePeople(); await tick(); }
         ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];
     }
     renderPanel();
@@ -1677,7 +1951,7 @@ async function openPopup() {
     if (isOn()) {
         await refreshBank();
         ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];
-        if (hasChat()) { ensurePeople(); await checkOverdue(); }
+        if (hasChat()) { ensurePeople(); await tick(); }
     }
     renderPanel();
     try { await pop.show(); } finally { restore(); }
@@ -1834,14 +2108,14 @@ async function initJobs() {
     rerenderAll();
     applyPrompt();
     const { eventSource, event_types } = ST;
-    eventSource.on(event_types.CHAT_CHANGED, async () => { ui.selected = 'user'; ui.ideas = []; ui.exp = {}; if (hasChat()) ensurePeople(); await refreshBank(); await checkOverdue(); applyPrompt(); rerenderAll(); setTimeout(rescueFab, 1000); });
+    eventSource.on(event_types.CHAT_CHANGED, async () => { ui.selected = 'user'; ui.ideas = []; ui.exp = {}; if (hasChat()) ensurePeople(); await refreshBank(); await tick(); applyPrompt(); rerenderAll(); setTimeout(rescueFab, 1000); });
     const genEvt = event_types.GENERATION_AFTER_COMMANDS || event_types.GENERATION_STARTED;
-    eventSource.on(genEvt, async () => { await refreshBank(); await checkOverdue(); applyPrompt(); });
+    eventSource.on(genEvt, async () => { await refreshBank(); await tick(); applyPrompt(); });
     eventSource.on(event_types.MESSAGE_RECEIVED, async (id) => {
         try {
             const idx = typeof id === 'number' ? id : (getContext().chat?.length || 1) - 1;
             await processMessage(idx);
-            await refreshBank(); await checkOverdue(); applyPrompt();
+            await refreshBank(); await tick(); applyPrompt();
         } catch (e) { console.warn('[Jobs] message handling failed', e); }
         if (ui.open) renderPanel();
     });

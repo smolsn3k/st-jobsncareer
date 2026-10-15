@@ -194,3 +194,16 @@
 }
 #jx_panel.jx-embedded .jx-head input[type=range] { display: none; }
 #jx_panel.jx-embedded .jx-head::before { display: none; }
+
+/* ---------- Job board (search as a website) ---------- */
+.jx-board { border: 1px solid var(--jx-border); border-radius: 14px; overflow: hidden; margin: 10px 0; background: var(--jx-soft); }
+.jx-bh { padding: 10px 12px; font-weight: 700; background: linear-gradient(135deg, color-mix(in srgb, var(--jx-accent) 28%, transparent), transparent 80%); }
+.jx-searchbar { display: flex; gap: 6px; padding: 10px 12px 4px; }
+#jx_panel .jx-searchbar input[type=text] { flex: 1; border-radius: 999px; padding: 8px 14px; width: auto; }
+#jx_panel .jx-go { border-radius: 999px; font-weight: 700; white-space: nowrap; }
+.jx-filters { padding: 6px 12px; gap: 6px; }
+.jx-fchip { border: 1px solid var(--jx-border); background: var(--jx-soft); color: inherit; border-radius: 999px; padding: 5px 13px; cursor: pointer; font: inherit; }
+.jx-fchip.jx-on { background: color-mix(in srgb, var(--jx-accent) 40%, transparent); border-color: var(--jx-accent); font-weight: 600; }
+.jx-fgrid { padding: 4px 12px 12px; }
+.jx-it b { font-size: 1.05em; }
+#jx_panel .jx-apply { background: color-mix(in srgb, #52c97a 35%, transparent); font-weight: 700; }
