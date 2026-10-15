@@ -13,7 +13,7 @@ const LS_FAB = 'jobsext_fab_pos';
 /* ------------------------------------------------------------------ */
 const I18N = {
     en: {
-        powerTip: 'Turn extension on/off', disabledMsg: 'Extension is turned off.', noChat: 'Open a chat first: jobs are saved per chat.', title: 'Jobs & Career', people: 'People', addNpc: '+ NPC', npcName: 'NPC name', age: 'Age', ageUnknown: 'unknown',
+        powerTip: 'Turn the extension on/off for this chat', disabledMsg: 'Extension is turned off.', noChat: 'Open a chat first: jobs are saved per chat.', title: 'Jobs & Career', people: 'People', addNpc: '+ NPC', npcName: 'NPC name', age: 'Age', ageUnknown: 'unknown',
         jobs: 'Jobs', noJobs: 'No jobs yet.', sStandard: 'Job search', sPart: 'Part-time', sTeen: 'Teen jobs', sAdult: 'Adult jobs',
         manual: '+ Manual', scan: 'Scan chat/card', searching: 'Thinking…', ideas: 'Ideas', add: 'Add', errApi: 'API request failed',
         noIdeas: 'No ideas returned.', jTitle: 'Title', employer: 'Employer', category: 'Category', type: 'Type', mode: 'Work mode',
@@ -29,7 +29,7 @@ const I18N = {
         phoneMissing: 'Phone-ST not detected: earnings are tracked here but not deposited.', negative: 'Balance is negative!',
         depositFail: 'Could not reach the Phone-ST bank; amount recorded in "total earned" only.', paid: 'Paid',
         noLeaveTasks: 'This character is on leave: no work tasks.', adultBlocked: 'Adult jobs are not allowed for this age.',
-        s_enable: 'Enable extension', s_lang: 'Language', s_adult: 'Adult content (adult jobs)', s_api: 'API profile', s_fallback: 'Fallback profile',
+        s_enable: 'Enable extension (global)', s_lang: 'Language', s_adult: 'Adult content (adult jobs)', s_api: 'API profile', s_fallback: 'Fallback profile',
         s_default: '(current API)', s_inject: 'Inject job info into chat', s_depth: 'Injection depth', s_bank: 'Include bank info in chat',
         s_phoneKey: 'Phone-ST folder name (optional, default: Phone-ST)', s_optional: 'Optional features', open: 'Open Jobs panel',
         o_history: 'Job history', o_coworkers: 'Link coworkers as NPCs', o_commute: 'Commute / location field', o_importExport: 'Import / export',
@@ -61,10 +61,22 @@ const I18N = {
         promoAvail: 'Promotion available', promoHint: 'Fills when tasks are completed and drops when they fail. At 100% a promotion becomes available and the model is told.', promoDone: 'Promoted',
         recent: 'Recent changes', restore: 'Restore', taskFailedMsg: 'Task failed', overdue: 'overdue', log_fail: 'failed', log_task: 'task added', log_done: 'done', log_cancel: 'cancelled', log_stress: 'stress', log_sat: 'satisfaction', log_promo: 'promotion progress',
         adultNeedsAge: 'Adult jobs (18+) are only available when the age group is set to Adult.',
+        offChat: 'The extension is off for this chat. Use the power button to turn it on.', world: 'World', worldType: 'Setting', worldCur: 'Currency (symbol or name)', worldDesc: 'World description',
+        worldDescPh: 'Era, technology, magic, economy, common employers, factions, locations…', scanLore: 'Scan lorebook', scanCard: 'Scan character card', savedWorlds: 'Saved worlds', load: 'Load',
+        worldName: 'World name', saveWorld: 'Save as world', worldHint: 'The world belongs to this chat. It shapes job ideas and is sent to the model. Saved worlds are shared between chats.',
+        noLore: 'No active lorebook entries found.', noCardText: 'No character card text found.', worldScanned: 'World description filled in. Review it, then save it if you like.', worldSaved: 'World saved.', s_newOff: 'Start new chats with the extension off',
+        wp_modern: 'Modern', wp_fantasy: 'Fantasy', wp_scifi: 'Sci-fi', wp_cyberpunk: 'Cyberpunk', wp_historical: 'Historical', wp_postapoc: 'Post-apocalyptic', wp_steampunk: 'Steampunk', wp_custom: 'Custom',
+        wb_modern: 'Present-day real world: modern economy, smartphones and internet, regular jobs, offices, shops, services and gig work.',
+        wb_fantasy: 'Medieval fantasy world: guilds, taverns, farms, smiths, mages and adventurers. Magic exists. Pay is in coins.',
+        wb_scifi: 'Spacefaring future: stations, colonies, corporations, ship crews, engineers and traders. Money is credits.',
+        wb_cyberpunk: 'Neon dystopia: megacorporations, street gangs, hackers, gig economy, cybernetic augmentation. Money is credits.',
+        wb_historical: 'A historical era (name the period here): trades, craftsmen, servants, merchants, farmers and clerks. No modern technology.',
+        wb_postapoc: 'Post-apocalyptic wasteland: scavengers, traders, settlements, guards and mechanics. Barter and scrap are money.',
+        wb_steampunk: 'Industrial steam-powered era: factories, airships, inventors, clerks, mechanics and guilds.', wb_custom: '',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
-        powerTip: 'Включить/выключить расширение', disabledMsg: 'Расширение выключено.', noChat: 'Сначала откройте чат: работы сохраняются отдельно для каждого чата.', title: 'Работа и карьера', people: 'Персонажи', addNpc: '+ NPC', npcName: 'Имя NPC', age: 'Возраст', ageUnknown: 'неизвестен',
+        powerTip: 'Включить/выключить расширение для этого чата', disabledMsg: 'Расширение выключено.', noChat: 'Сначала откройте чат: работы сохраняются отдельно для каждого чата.', title: 'Работа и карьера', people: 'Персонажи', addNpc: '+ NPC', npcName: 'Имя NPC', age: 'Возраст', ageUnknown: 'неизвестен',
         jobs: 'Работы', noJobs: 'Пока нет работ.', sStandard: 'Поиск работы', sPart: 'Подработка', sTeen: 'Работа для подростков', sAdult: 'Работа 18+',
         manual: '+ Вручную', scan: 'Найти в чате/карточке', searching: 'Думаю…', ideas: 'Варианты', add: 'Добавить', errApi: 'Ошибка запроса к API',
         noIdeas: 'Вариантов нет.', jTitle: 'Должность', employer: 'Работодатель', category: 'Категория', type: 'Тип', mode: 'Формат работы',
@@ -80,7 +92,7 @@ const I18N = {
         phoneMissing: 'Phone-ST не найден: заработок считается здесь, но не зачисляется.', negative: 'Баланс отрицательный!',
         depositFail: 'Не удалось связаться с банком Phone-ST; сумма записана только в «всего заработано».', paid: 'Оплачено',
         noLeaveTasks: 'Персонаж в отпуске: рабочих заданий нет.', adultBlocked: 'Работа 18+ недоступна для этого возраста.',
-        s_enable: 'Включить расширение', s_lang: 'Язык', s_adult: 'Контент 18+ (работа 18+)', s_api: 'Профиль API', s_fallback: 'Запасной профиль',
+        s_enable: 'Включить расширение (глобально)', s_lang: 'Язык', s_adult: 'Контент 18+ (работа 18+)', s_api: 'Профиль API', s_fallback: 'Запасной профиль',
         s_default: '(текущий API)', s_inject: 'Добавлять инфо о работе в чат', s_depth: 'Глубина вставки', s_bank: 'Включать данные банка в чат',
         s_phoneKey: 'Имя папки Phone-ST (необязательно, по умолчанию Phone-ST)', s_optional: 'Дополнительные функции', open: 'Открыть панель работ',
         o_history: 'История работ', o_coworkers: 'Коллеги как NPC', o_commute: 'Поле «дорога / место»', o_importExport: 'Импорт / экспорт',
@@ -112,6 +124,18 @@ const I18N = {
         promoAvail: 'Повышение доступно', promoHint: 'Растёт при выполнении заданий и падает при провале. На 100% повышение становится доступным, и модель об этом узнаёт.', promoDone: 'Повышен',
         recent: 'Последние изменения', restore: 'Вернуть', taskFailedMsg: 'Задание провалено', overdue: 'просрочено', log_fail: 'провалено', log_task: 'новое задание', log_done: 'выполнено', log_cancel: 'отменено', log_stress: 'стресс', log_sat: 'удовлетворённость', log_promo: 'прогресс повышения',
         adultNeedsAge: 'Работа 18+ доступна только если возрастная группа — «Взрослый».',
+        offChat: 'Расширение выключено для этого чата. Включите его кнопкой питания.', world: 'Мир', worldType: 'Сеттинг', worldCur: 'Валюта (символ или название)', worldDesc: 'Описание мира',
+        worldDescPh: 'Эпоха, технологии, магия, экономика, типичные работодатели, фракции, места…', scanLore: 'Сканировать лорбук', scanCard: 'Сканировать карточку', savedWorlds: 'Сохранённые миры', load: 'Загрузить',
+        worldName: 'Название мира', saveWorld: 'Сохранить как мир', worldHint: 'Мир относится к этому чату. Он влияет на идеи работ и отправляется модели. Сохранённые миры общие для всех чатов.',
+        noLore: 'Активные записи лорбука не найдены.', noCardText: 'Текст карточки персонажа не найден.', worldScanned: 'Описание мира заполнено. Проверьте его и при желании сохраните.', worldSaved: 'Мир сохранён.', s_newOff: 'Новые чаты начинать с выключенным расширением',
+        wp_modern: 'Современность', wp_fantasy: 'Фэнтези', wp_scifi: 'Научная фантастика', wp_cyberpunk: 'Киберпанк', wp_historical: 'Историческая эпоха', wp_postapoc: 'Постапокалипсис', wp_steampunk: 'Стимпанк', wp_custom: 'Свой мир',
+        wb_modern: 'Наши дни: современная экономика, смартфоны и интернет, обычные работы, офисы, магазины, сфера услуг и подработки.',
+        wb_fantasy: 'Средневековый фэнтези-мир: гильдии, таверны, фермы, кузнецы, маги и искатели приключений. Магия существует. Платят монетами.',
+        wb_scifi: 'Космическое будущее: станции, колонии, корпорации, экипажи кораблей, инженеры и торговцы. Деньги — кредиты.',
+        wb_cyberpunk: 'Неоновая антиутопия: мегакорпорации, уличные банды, хакеры, гиг-экономика, кибернетические импланты. Деньги — кредиты.',
+        wb_historical: 'Историческая эпоха (укажите период): ремёсла, слуги, торговцы, крестьяне и писари. Современных технологий нет.',
+        wb_postapoc: 'Постапокалиптическая пустошь: мусорщики, торговцы, поселения, охрана и механики. Деньги — бартер и хлам.',
+        wb_steampunk: 'Индустриальная паровая эпоха: фабрики, дирижабли, изобретатели, клерки, механики и гильдии.', wb_custom: '',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -135,6 +159,8 @@ const DEFAULTS = {
     showFab: true,
     phone: { all: true, bank: true, calendar: true, contacts: true, storyDate: true },
     tags: true,
+    newChatsOff: false,
+    worlds: [],
     promoDone: 10,
     promoRaise: 10,
     autoFail: true,
@@ -168,11 +194,14 @@ function S() {
 // Global settings live in extension_settings; everything else (people, jobs, NPCs, leave, tasks...) is stored per chat.
 function D() {
     const md = getContext().chatMetadata;
-    if (!md[MODULE]) md[MODULE] = { people: {}, log: [] };
+    if (!md[MODULE]) md[MODULE] = { people: {}, log: [], off: !!S().newChatsOff };
     if (!md[MODULE].log) md[MODULE].log = [];
+    if (!md[MODULE].world) md[MODULE].world = { preset: 'modern', description: '', currency: '' };
     if (!md[MODULE].people) md[MODULE].people = {};
     return md[MODULE];
 }
+const chatOff = () => { try { return !!getContext().chatMetadata?.[MODULE]?.off; } catch { return false; } };
+const isOn = () => S().enabled && !chatOff();
 const hasChat = () => { try { return !!getContext().getCurrentChatId?.(); } catch { return false; } };
 function save() {
     ST.saveSettingsDebounced();
@@ -199,7 +228,11 @@ function setByPath(o, path, v) {
     cur[last] = v;
 }
 
-const fmt = (n, cur) => `${cur || ''}${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const fmt = (n, cur) => {
+    const v = Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    if (!cur) return v;
+    return /^\p{L}{2,}/u.test(cur) ? `${v} ${cur}` : `${cur}${v}`;
+};
 
 /* ------------------------------------------------------------------ */
 /* Data model                                                          */
@@ -418,7 +451,7 @@ async function diagnose() {
 }
 
 async function refreshBank() {
-    if (!S().enabled) return;
+    if (!isOn()) return;
     const ph = S().phone;
     bank.detected = PhoneBridge.installed();
     const avail = bank.detected && ph.all;
@@ -432,7 +465,7 @@ async function refreshBank() {
     } catch (e) { console.warn('[Jobs] phone refresh', e); }
 }
 const effCur = (p, j) => (p.kind === 'user' && bank.currency ? bank.currency : j.salary.currency);
-const worldCur = () => bank.currency || '$';
+const worldCur = () => bank.currency || D().world?.currency || '$';
 
 /* ------------------------------------------------------------------ */
 /* Payments                                                            */
@@ -524,7 +557,7 @@ async function taskStatusChanged(p, j, k, prev, why) {
 }
 
 async function checkOverdue() {
-    if (!S().enabled || !S().autoFail || !rpDate || !hasChat()) return false;
+    if (!isOn() || !S().autoFail || !rpDate || !hasChat()) return false;
     let changed = false;
     for (const p of Object.values(D().people)) for (const j of p.jobs) {
         if (isOnLeave(j)) continue; // deadlines pause during leave
@@ -637,7 +670,7 @@ async function applyOp({ kind, args }) {
 // Applies and strips the tags of a freshly received character message
 async function processMessage(id) {
     const s = S();
-    if (!s.enabled || !s.tags || !hasChat()) return;
+    if (!isOn() || !s.tags || !hasChat()) return;
     const ctx = getContext();
     const msg = ctx.chat?.[id];
     if (!msg || msg.is_user || typeof msg.mes !== 'string') return;
@@ -665,6 +698,83 @@ function trackingInstructions() {
     if (anyPromo) L.push('[job:promo|Person|Job|+N or -N] progress toward a promotion;  [job:promoted|Person|Job|new title|raise %] only when a promotion really happens');
     L.push('Only tag real changes.]');
     return L.join('\n');
+}
+
+/* ------------------------------------------------------------------ */
+/* World / setting                                                     */
+/* ------------------------------------------------------------------ */
+const WORLD_IDS = ['modern', 'fantasy', 'scifi', 'cyberpunk', 'historical', 'postapoc', 'steampunk', 'custom'];
+const WORLD_EN = { modern: 'Modern day', fantasy: 'Fantasy', scifi: 'Sci-fi', cyberpunk: 'Cyberpunk', historical: 'Historical', postapoc: 'Post-apocalyptic', steampunk: 'Steampunk', custom: 'Custom world' };
+
+function worldText() {
+    const w = D().world;
+    if (!w) return '';
+    const d = (w.description || '').trim();
+    if (w.preset === 'modern' && !d) return '';
+    return `${WORLD_EN[w.preset] || ''}${d ? ': ' + d.slice(0, 700) : ''}`.trim();
+}
+const isBlurb = (d) => !d.trim() || WORLD_IDS.some((id) => Object.values(I18N).some((L) => L['wb_' + id] === d));
+
+function curOptions(cur) {
+    const list = [...CURRENCIES];
+    for (const c of [D().world?.currency, cur]) if (c && !list.includes(c)) list.push(c);
+    return list.map((c) => `<option ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join('');
+}
+
+function parseJsonObject(txt) {
+    const clean = String(txt).replace(/```json|```/g, '');
+    const a = clean.indexOf('{'), b = clean.lastIndexOf('}');
+    if (a < 0 || b < 0) return null;
+    try { const v = JSON.parse(clean.slice(a, b + 1)); return isObj(v) ? v : null; } catch { return null; }
+}
+
+// Active lorebook entries (global + character + chat books), via SillyTavern's own world-info module
+async function loreEntries() {
+    let WI = null;
+    try { WI = await import('../../../world-info.js'); } catch (e) { console.warn('[Jobs] world-info import failed', e); }
+    let entries = [];
+    try { if (WI?.getSortedEntries) entries = await WI.getSortedEntries(); } catch (e) { console.warn('[Jobs] getSortedEntries failed', e); }
+    if (!entries.length && WI?.loadWorldInfo) {
+        const ctx = getContext();
+        const names = new Set(WI.selected_world_info || []);
+        const cw = ctx.characters?.[ctx.characterId]?.data?.extensions?.world;
+        if (cw) names.add(cw);
+        if (ctx.chatMetadata?.world_info) names.add(ctx.chatMetadata.world_info);
+        for (const n of names) { try { const d = await WI.loadWorldInfo(n); entries.push(...Object.values(d?.entries || {})); } catch { /* skip book */ } }
+    }
+    return entries.filter((e) => e && !e.disable && e.content);
+}
+
+function loreText(entries) {
+    const sorted = [...entries].sort((a, b) => (b.constant ? 1 : 0) - (a.constant ? 1 : 0));
+    let out = '', n = 0;
+    for (const e of sorted) {
+        const title = e.comment || (Array.isArray(e.key) ? e.key.slice(0, 3).join(', ') : '');
+        const line = `- ${title}: ${String(e.content).replace(/\s+/g, ' ').slice(0, 350)}\n`;
+        if (out.length + line.length > 9000 || ++n > 60) break;
+        out += line;
+    }
+    return out;
+}
+
+async function scanWorld(source) {
+    let material = '';
+    if (source === 'lore') {
+        const entries = await loreEntries();
+        if (!entries.length) throw new Error('nolore');
+        material = loreText(entries);
+    } else {
+        material = cardText();
+        if (!material) throw new Error('nocard');
+    }
+    const sys = 'You summarize roleplay settings. Reply with ONLY a JSON object, no commentary.';
+    const prompt = `Source material (${source === 'lore' ? 'lorebook entries' : 'character card'}):\n${material}\n\nDescribe the world/setting so it can be used to invent fitting jobs. JSON object with keys: preset (one of ${WORLD_IDS.join('|')}), currency (the money used, as a symbol or short name, or ""), description (max 180 words: era and technology, economy, common industries and employers, notable organizations/factions/locations, anything unusual such as magic). Write in ${outLang()}.`;
+    const o = parseJsonObject(await llm(prompt, sys));
+    if (!o || !o.description) throw new Error('parse');
+    const w = D().world;
+    w.preset = WORLD_IDS.includes(o.preset) ? o.preset : 'custom';
+    if (o.currency) w.currency = String(o.currency).slice(0, 20);
+    w.description = String(o.description).trim();
 }
 
 /* ------------------------------------------------------------------ */
@@ -726,7 +836,8 @@ async function searchIdeas(kind) {
     const p = D().people[ui.selected];
     const cur = worldCur();
     const sys = 'You generate realistic job offers for a roleplay character. Reply with ONLY a JSON array, no commentary.';
-    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${resumeText(p)}Context:\n${cardText()}\n\nSuggest 4 ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
+    const wt = worldText();
+    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${wt ? `World/setting: ${wt}\nThe jobs must fit this world: adapt occupation names, employers and pay to it.\n` : ''}${resumeText(p)}Context:\n${cardText()}\n\nSuggest 4 ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
     const arr = parseJsonArray(await llm(prompt, sys));
     return arr.map((x) => ({ ...x, amount: num(x.amount), vacation_days: num(x.vacation_days), insurance: truthy(x.insurance), type: kind }));
 }
@@ -751,7 +862,7 @@ function knownBy(owner, j) {
 
 function buildPrompt() {
     const s = S();
-    if (!s.enabled || !s.inject || !hasChat()) return '';
+    if (!isOn() || !s.inject || !hasChat()) return '';
     const P = D().people;
     const lines = [];
     const resumes = [];
@@ -789,6 +900,8 @@ function buildPrompt() {
     const showBank = s.bankInChat && bank.installed && bank.balance != null;
     if (!lines.length && !resumes.length && !showBank) return '';
     let out = `[Jobs & career info (reference). A job may only be mentioned by or to characters who know about it (see "Known by"). Characters on leave get no work tasks. Write job-related text in the chat's language.]`;
+    const wt = worldText();
+    if (wt) out += `\nWorld: ${wt}`;
     if (resumes.length) out += `\nResumes:\n${resumes.join('\n')}`;
     if (lines.length) out += `\nJobs:\n${lines.join('\n')}`;
     if (s.tags && lines.length) out += `\n${trackingInstructions()}`;
@@ -809,7 +922,7 @@ function applyPrompt() {
 /* ------------------------------------------------------------------ */
 /* UI state & rendering                                                */
 /* ------------------------------------------------------------------ */
-const ui = { open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
+const ui = { open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
 
 function opacity() { const v = parseFloat(localStorage.getItem(LS_OPACITY)); return Number.isNaN(v) ? 1 : v; }
 
@@ -938,7 +1051,7 @@ function renderJob(p, j) {
     if (open) {
         const paySec = `<div class="jx-grid">${fld(j, 'salary.amount', t('amount'), 'num')}
           ${p.kind === 'user' && bank.currency ? `<label class="jx-f"><span>${t('currency')}</span><input disabled value="${esc(bank.currency)}"></label>`
-            : fld(j, 'salary.currency', t('currency'), 'select', { html: CURRENCIES.map((c) => `<option ${c === j.salary.currency ? 'selected' : ''}>${c}</option>`).join('') })}
+            : fld(j, 'salary.currency', t('currency'), 'select', { html: curOptions(j.salary.currency) })}
           ${j.type === 'freelance' ? fld(j, 'salary.rateType', t('rateType'), 'select', { html: opts(RATES, j.salary.rateType, 'r_') }) : fld(j, 'salary.period', t('period'), 'select', { html: opts(PERIODS, j.salary.period, 'p_') })}
           ${fld(j, 'salary.totalEarned', t('totalEarned'), 'num')}
           ${fld(j, 'leave.balances.vacation.allowance', t('vacationDays'), 'num')}
@@ -973,8 +1086,26 @@ function ideaCard(x, i) {
       ${x.description ? `<div class="jx-dim">${esc(x.description)}</div>` : ''}<button class="menu_button" data-a="addIdea" data-i="${i}">＋ ${t('add')}</button></div>`;
 }
 
+function renderWorld() {
+    const w = D().world;
+    const open = ui.worldOpen;
+    let h = `<div class="jx-card jx-world"><div class="jx-sh" data-a="worldToggle"><span>🌍 ${t('world')} · ${esc(t('wp_' + w.preset))}</span><span class="jx-sbadge">${w.description ? '●' : ''}</span><span class="jx-chev">${open ? '▾' : '▸'}</span></div>`;
+    if (open) {
+        h += `<div class="jx-grid"><label class="jx-f"><span>${t('worldType')}</span><select data-w="preset">${WORLD_IDS.map((id) => `<option value="${id}" ${w.preset === id ? 'selected' : ''}>${esc(t('wp_' + id))}</option>`).join('')}</select></label>
+          <label class="jx-f"><span>${t('worldCur')}</span><input type="text" data-w="currency" value="${esc(w.currency)}" placeholder="$ / gold / credits"></label></div>
+          <label class="jx-f"><span>${t('worldDesc')}</span><textarea rows="5" data-w="description" placeholder="${esc(t('worldDescPh'))}">${esc(w.description)}</textarea></label>
+          <div class="jx-row"><button class="menu_button" data-a="scanWorld" data-k="lore">📚 ${t('scanLore')}</button><button class="menu_button" data-a="scanWorld" data-k="card">🃏 ${t('scanCard')}</button></div>
+          <div class="jx-st">${t('savedWorlds')}</div>
+          <div class="jx-row"><select class="jx-wsel"><option value="">—</option>${S().worlds.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
+            <button class="menu_button" data-a="loadWorld">${t('load')}</button><button class="menu_button" data-a="delWorld">×</button></div>
+          <div class="jx-row"><input type="text" class="jx-wname" placeholder="${esc(t('worldName'))}"><button class="menu_button" data-a="saveWorld">💾 ${t('saveWorld')}</button></div>
+          <div class="jx-hint">${t('worldHint')}</div>`;
+    }
+    return h + '</div>';
+}
+
 function updatePower() {
-    const on = S().enabled;
+    const on = isOn();
     document.getElementById('jx_panel')?.classList.toggle('jx-off', !on);
     document.getElementById('jx_fab')?.classList.toggle('jx-off', !on);
     const b = document.getElementById('jx_power');
@@ -993,6 +1124,7 @@ function renderPanel() {
     updatePower(); updateFab();
     if (!S().enabled) { body.innerHTML = `<div class="jx-empty">${t('disabledMsg')}</div>`; return; }
     if (!hasChat()) { body.innerHTML = `<div class="jx-empty">${t('noChat')}</div>`; return; }
+    if (chatOff()) { body.innerHTML = `<div class="jx-empty">${t('offChat')}</div>`; return; }
     ensurePeople();
     const s = S();
     const p = D().people[ui.selected];
@@ -1005,6 +1137,7 @@ function renderPanel() {
         h += `<div class="jx-bank jx-dim">📵 ${msg}</div>`;
     }
 
+    h += renderWorld();
     h += '<div class="jx-people">' + visiblePeople().map((x) => `<button class="jx-tab ${x.id === ui.selected ? 'jx-on' : ''}" data-a="select" data-id="${esc(x.id)}">${kindIcon(x)} ${esc(x.name)}</button>`).join('')
         + `<button class="jx-tab jx-add" data-a="addNpc">${t('addNpc')}</button></div>`;
 
@@ -1061,7 +1194,7 @@ function renderSettings() {
     const chk = (path, label, dis = false) => `<label class="checkbox_label"><input type="checkbox" data-s="${path}" data-c="1" ${getByPath(s, path) ? 'checked' : ''} ${dis ? 'disabled' : ''}><span>${esc(label)}</span></label>`;
     const numf = (path, label) => `<label>${esc(label)} <input type="number" min="0" data-s="${path}" data-n="1" class="text_pole" value="${getByPath(s, path)}"></label>`;
     const profOpts = (cur) => `<option value="">${t('s_default')}</option>` + profiles().map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-    el.innerHTML = `<h4>${t('s_global')}</h4>${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('adult', t('s_adult'))}
+    el.innerHTML = `<h4>${t('s_global')}</h4>${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
       <label>${t('s_defReduced')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label><small>${t('reducedHint')}</small>
       <h4>${t('s_ai')}</h4>
@@ -1112,8 +1245,17 @@ async function onChange(e) {
         }
         return afterChange();
     }
-    if (!el.dataset.f && !el.dataset.p && !el.dataset.s) return;
+    if (!el.dataset.f && !el.dataset.p && !el.dataset.s && !el.dataset.w) return;
     const val = el.dataset.c ? el.checked : el.dataset.n ? readNum(el) : el.value;
+    if (el.dataset.w) {
+        const w = D().world;
+        if (el.dataset.w === 'preset') {
+            const prevPreset = w.preset;
+            w.preset = val;
+            if (isBlurb(w.description) || w.description === t('wb_' + prevPreset)) w.description = t('wb_' + val);
+        } else w[el.dataset.w] = val;
+        return afterChange();
+    }
     if (el.dataset.s) {
         setByPath(S(), el.dataset.s, val);
         if (el.dataset.s === 'phoneKey') resetPhoneMods();
@@ -1204,6 +1346,40 @@ async function onClick(e) {
         case 'restoreJob': { const h = p.history.splice(+el.dataset.i, 1)[0]; if (h) p.jobs.push(h); return afterChange(); }
         case 'delHist': if (confirm(t('confirm'))) { p.history.splice(+el.dataset.i, 1); return afterChange(); } return;
         case 'logToggle': ui.logOpen = !ui.logOpen; return renderPanel();
+        case 'worldToggle': ui.worldOpen = !ui.worldOpen; return renderPanel();
+        case 'scanWorld': {
+            ui.busy = 'world'; renderPanel();
+            try { await scanWorld(el.dataset.k); toastr.success(t('worldScanned')); }
+            catch (err) {
+                if (err.message === 'nolore') toastr.info(t('noLore'));
+                else if (err.message === 'nocard') toastr.info(t('noCardText'));
+                else { console.error(err); toastr.error(t('errApi')); }
+            }
+            ui.busy = ''; return afterChange();
+        }
+        case 'saveWorld': {
+            const box = el.closest('.jx-world');
+            const name = box.querySelector('.jx-wname').value.trim();
+            if (!name) return;
+            const w = D().world;
+            const ex = s.worlds.find((x) => x.name.toLowerCase() === name.toLowerCase());
+            const rec = { id: ex?.id || uid(), name, preset: w.preset, description: w.description, currency: w.currency };
+            if (ex) Object.assign(ex, rec); else s.worlds.push(rec);
+            if (s.worlds.length > 50) s.worlds.shift();
+            toastr.success(t('worldSaved')); return afterChange();
+        }
+        case 'loadWorld': {
+            const id = el.closest('.jx-world').querySelector('.jx-wsel').value;
+            const rec = s.worlds.find((x) => x.id === id);
+            if (!rec) return;
+            D().world = { preset: rec.preset, description: rec.description, currency: rec.currency };
+            return afterChange();
+        }
+        case 'delWorld': {
+            const id = el.closest('.jx-world').querySelector('.jx-wsel').value;
+            if (id && confirm(t('confirm'))) { s.worlds = s.worlds.filter((x) => x.id !== id); return afterChange(); }
+            return;
+        }
         case 'archiveJob': jp.history.push(clone(j)); jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange();
         case 'search': case 'scan': {
             const kind = el.dataset.k;
@@ -1227,7 +1403,7 @@ async function onClick(e) {
             const nj = newJob({
                 title: x.title, employer: x.employer, category: x.category, description: x.description, schedule: x.schedule, type,
                 mode: MODES.includes(x.mode) ? x.mode : 'onsite', period: PERIODS.includes(x.period) ? x.period : 'month',
-                amount: x.amount, vacationDays: x.vacation_days, insurance: x.insurance, currency: CURRENCIES.includes(worldCur()) ? worldCur() : '$',
+                amount: x.amount, vacationDays: x.vacation_days, insurance: x.insurance, currency: worldCur(),
             });
             if (type === 'freelance') nj.salary.period = 'project';
             owner.jobs.push(nj); ui.exp[nj.id] = true; ui.ideas.splice(+el.dataset.i, 1); return afterChange();
@@ -1285,7 +1461,10 @@ async function onClick(e) {
         case 'export': download(`jobs_${p.name}.json`, JSON.stringify({ jobs: p.jobs, history: p.history, resume: p.resume }, null, 2)); return;
         case 'import': document.getElementById('jx_file')?.click(); return;
         case 'phone': s.phone.all = !s.phone.all; save(); await refreshBank(); applyPrompt(); rerenderAll(); return;
-        case 'power': s.enabled = !s.enabled; save(); applyPrompt(); rerenderAll(); return;
+        case 'power':
+            if (!s.enabled) s.enabled = true;
+            else if (hasChat()) { const d = D(); d.off = !d.off; }
+            save(); await refreshBank(); applyPrompt(); rerenderAll(); return;
         case 'close': ui.open = false; document.getElementById('jx_panel').classList.remove('jx-open'); return;
         default:
     }
@@ -1311,7 +1490,7 @@ async function onFile(e) {
 async function openPanel() {
     ui.open = true;
     document.getElementById('jx_panel').classList.add('jx-open');
-    if (S().enabled) {
+    if (isOn()) {
         await refreshBank();
         if (hasChat()) { ensurePeople(); await checkOverdue(); }
         ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];

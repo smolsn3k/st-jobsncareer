@@ -34,6 +34,14 @@ Open the panel with the 💼 button, the **Jobs** entry in the Extensions menu (
 - Phone-ST integration (bank balance, currency, deposits, contacts, messages, notifications)
 - Optional extras (off by default): job history, coworkers as NPCs, commute field, import/export, event notifications, chat auto-summary, stress and satisfaction sliders
 
+## World / setting
+
+The **World** card at the top of the panel sets the setting for the chat: Modern, Fantasy, Sci-fi, Cyberpunk, Historical, Post-apocalyptic, Steampunk or Custom. Picking one fills in a short description that you can edit freely (era, technology, magic, economy, common employers, factions, locations), and you can set the currency (a symbol like `$`, or a name like `gold` or `credits`).
+
+- Job searches use the world, so a fantasy chat gets blacksmiths and guild work, paid in the world's currency. The description is also sent to the model with the job info (Modern with no description sends nothing).
+- **Scan lorebook** reads the active lorebook entries (global, character and chat books) and asks your model to write the world description, type and currency for you. **Scan character card** does the same from the card text. Review the result before relying on it.
+- **Save as world** stores the current world in a library that is shared between chats; load or delete saved worlds from the same card. The active world itself belongs to the chat.
+
 ## Tracking from the chat (hidden tags)
 
 When a job exists, the model is asked to add hidden tags at the end of its replies, for example:
@@ -58,7 +66,7 @@ Limits: if you swipe or regenerate a reply, the changes from the discarded versi
 
 ## On/off and floating button
 
-Use the ⏻ button in the panel header, or the checkbox in the extension settings. When off, nothing is added to the prompt.
+The ⏻ button in the panel header turns the extension on or off **for the current chat only**. Other chats are not affected. The **Enable extension (global)** checkbox in the settings switches it off everywhere, and **Start new chats with the extension off** makes new chats begin disabled. When off, nothing is added to the prompt and the 💼 button is dimmed.
 
 The 💼 floating button can be dragged anywhere (its position is remembered per device) and hidden with **Show floating button** in the settings. The panel is also reachable from the Extensions menu (wand icon).
 
