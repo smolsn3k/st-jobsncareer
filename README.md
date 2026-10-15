@@ -29,7 +29,7 @@ Open the panel with the 💼 button, the **Jobs** entry in the Extensions menu (
 - Salary with currency and pay period, running total earned, freelance rates, per-job tasks that pay out when done
 - Job history: archived jobs can be restored from the Previous jobs list (optional feature)
 - Job search (standard, part-time, teen, adult), manual entry, and scanning the chat or character card
-- Age rules and an adult content toggle (off by default)
+- Age rules and an adult content toggle (off by default). With the toggle on, the **Adult jobs** search suggests explicit adult-industry work (sex work, escort, stripper, cam model and similar) with frank descriptions. It is only available for characters whose age group is set to **Adult**; adult jobs stay hidden for everyone else. If your model refuses these requests, pick a different **API profile** in the settings.
 - Awareness: choose who knows about each job
 - Phone-ST integration (bank balance, currency, deposits, contacts, messages, notifications)
 - Optional extras (off by default): job history, coworkers as NPCs, commute field, import/export, event notifications, chat auto-summary, stress and satisfaction sliders

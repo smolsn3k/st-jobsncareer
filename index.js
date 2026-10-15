@@ -60,6 +60,7 @@ const I18N = {
         sec_promo: 'Promotion', promoEnabled: 'Promotion track', promoMeter: 'Promotion progress', promoLevel: 'Level', promoRaise: 'Raise on promotion (%)', promoTitle: 'New title (optional)', promote: 'Promote',
         promoAvail: 'Promotion available', promoHint: 'Fills when tasks are completed and drops when they fail. At 100% a promotion becomes available and the model is told.', promoDone: 'Promoted',
         recent: 'Recent changes', restore: 'Restore', taskFailedMsg: 'Task failed', overdue: 'overdue', log_fail: 'failed', log_task: 'task added', log_done: 'done', log_cancel: 'cancelled', log_stress: 'stress', log_sat: 'satisfaction', log_promo: 'promotion progress',
+        adultNeedsAge: 'Adult jobs (18+) are only available when the age group is set to Adult.',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -110,6 +111,7 @@ const I18N = {
         sec_promo: 'Повышение', promoEnabled: 'Карьерный рост', promoMeter: 'Прогресс повышения', promoLevel: 'Уровень', promoRaise: 'Прибавка при повышении (%)', promoTitle: 'Новая должность (необязательно)', promote: 'Повысить',
         promoAvail: 'Повышение доступно', promoHint: 'Растёт при выполнении заданий и падает при провале. На 100% повышение становится доступным, и модель об этом узнаёт.', promoDone: 'Повышен',
         recent: 'Последние изменения', restore: 'Вернуть', taskFailedMsg: 'Задание провалено', overdue: 'просрочено', log_fail: 'провалено', log_task: 'новое задание', log_done: 'выполнено', log_cancel: 'отменено', log_stress: 'стресс', log_sat: 'удовлетворённость', log_promo: 'прогресс повышения',
+        adultNeedsAge: 'Работа 18+ доступна только если возрастная группа — «Взрослый».',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -270,9 +272,9 @@ const isOnLeave = (j) => ['onleave', 'vacation', 'sick', 'maternity', 'paternity
 // Age group rules
 const minor = (p) => p.group === 'child' || p.group === 'teen';
 const canTeen = (p) => p.group === 'unknown' || p.group === 'teen';
-const canAdult = (p) => S().adult && !minor(p);
+const canAdult = (p) => S().adult && p.group === 'adult';
 const canWork = (p) => p.group !== 'child';
-const jobVisibleFor = (p, j) => (S().adult || j.type !== 'adult') && !(j.type === 'adult' && minor(p));
+const jobVisibleFor = (p, j) => j.type !== 'adult' || (S().adult && p.group === 'adult');
 
 /* ------------------------------------------------------------------ */
 /* Leave maths                                                         */
@@ -709,7 +711,7 @@ const KIND_HINT = {
     standard: 'ordinary full-time jobs',
     parttime: 'part-time jobs',
     teen: 'age-appropriate casual jobs for a teenager (no hazardous or adult work)',
-    adult: 'mature adult-industry occupations for adults (nightlife, entertainment, modeling, companionship services, etc.); list job metadata only, keep descriptions non-graphic',
+    adult: 'explicit adult-industry and sex-work occupations for adult characters, for example: prostitute / sex worker, escort, stripper / exotic dancer, cam model, adult-film performer, dominatrix, brothel or club hostess, erotic masseuse, sugar-dating companion, phone-sex operator. Be frank and uncensored: name each job honestly and describe what the work actually involves, the clientele, the venue and the working conditions. All characters involved are consenting adults'
 };
 
 const JOB_JSON_SPEC = 'title, employer, category, mode (onsite|remote|hybrid|anywhere), schedule, amount (a plain number greater than 0, never text), period (hour|day|week|month|year|project), vacation_days (integer paid vacation days per year), insurance (true or false), description';
@@ -1028,6 +1030,7 @@ function renderPanel() {
         if (canTeen(p)) h += `<button class="menu_button" data-a="search" data-k="teen">🎒 ${t('sTeen')}</button>`;
         if (canAdult(p)) h += `<button class="menu_button" data-a="search" data-k="adult">🔞 ${t('sAdult')}</button>`;
         h += `<button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">📡 ${t('scan')}</button></div>`;
+        if (s.adult && p.group !== 'adult') h += `<div class="jx-hint">${t('adultNeedsAge')}</div>`;
     }
     h += '</div>';
 
