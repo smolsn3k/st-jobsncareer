@@ -73,6 +73,8 @@ Limits: if you swipe or regenerate a reply, the changes from the discarded versi
 
 The ⏻ button in the panel header turns the extension on or off **for the current chat only**. Other chats are not affected. The **Enable extension (global)** checkbox in the settings switches it off everywhere, and **Start new chats with the extension off** makes new chats begin disabled. When off, nothing is added to the prompt and the 💼 button is dimmed.
 
+If the button ever goes missing (for example dragged off-screen on a phone), use **Reset floating button position** in the settings. The extension also resets it by itself when it finds it off-screen. You can always open the panel with the **/jobs** command in the chat box or from the Extensions menu (wand icon).
+
 The 💼 floating button can be dragged anywhere (its position is remembered per device) and hidden with **Show floating button** in the settings. The panel is also reachable from the Extensions menu (wand icon).
 
 ## Where data is stored

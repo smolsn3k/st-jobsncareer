@@ -75,6 +75,7 @@ const I18N = {
         wb_steampunk: 'Industrial steam-powered era: factories, airships, inventors, clerks, mechanics and guilds.', wb_custom: '',
         emoji: 'Emoji',
         settingsTip: 'Settings', back: 'Back',
+        resetFab: 'Reset floating button position', fabReset: 'Floating button reset.',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -140,6 +141,7 @@ const I18N = {
         wb_steampunk: 'Индустриальная паровая эпоха: фабрики, дирижабли, изобретатели, клерки, механики и гильдии.', wb_custom: '',
         emoji: 'Эмодзи',
         settingsTip: 'Настройки', back: 'Назад',
+        resetFab: 'Сбросить положение плавающей кнопки', fabReset: 'Плавающая кнопка сброшена.',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -1217,7 +1219,7 @@ function settingsHtml(inPanel) {
     const top = inPanel
         ? `<div class="jx-row"><button class="menu_button" data-a="gear">← ${t('back')}</button></div>`
         : `<div class="menu_button" data-a="openPanel">${t('open')}</div>`;
-    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
+    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}<div class="menu_button" data-a="resetFab">${t('resetFab')}</div>${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
       <label>${t('s_lang')} <select data-s="lang" class="text_pole"><option value="auto" ${s.lang === 'auto' ? 'selected' : ''}>Auto</option><option value="en" ${s.lang === 'en' ? 'selected' : ''}>English</option><option value="ru" ${s.lang === 'ru' ? 'selected' : ''}>Русский</option></select></label>
       <label>${t('s_defReduced')} <input type="number" min="0" max="100" data-s="reducedPct" data-n="1" class="text_pole" value="${s.reducedPct}"></label><small>${t('reducedHint')}</small>`;
     const ai = `<label>${t('s_api')} <select data-s="apiProfile" class="text_pole">${profOpts(s.apiProfile)}</select></label>
@@ -1374,6 +1376,7 @@ async function onClick(e) {
         case 'restoreJob': { const h = p.history.splice(+el.dataset.i, 1)[0]; if (h) p.jobs.push(h); return afterChange(); }
         case 'delHist': if (confirm(t('confirm'))) { p.history.splice(+el.dataset.i, 1); return afterChange(); } return;
         case 'logToggle': ui.logOpen = !ui.logOpen; return renderPanel();
+        case 'resetFab': { resetFabPos(); s.showFab = true; save(); updateFab(); rerenderAll(); toastr.success(t('fabReset')); setTimeout(rescueFab, 200); return; }
         case 'gear': ui.view = ui.view === 'settings' ? 'main' : 'settings'; rerenderAll(); return;
         case 'setSec': ui.setSec[el.dataset.sec] = !ui.setSec[el.dataset.sec]; try { localStorage.setItem(LS_SETSEC, JSON.stringify(ui.setSec)); } catch { /* ignore */ } rerenderAll(); return;
         case 'openPanel': ui.view = 'main'; await openPanel(); return;
@@ -1524,6 +1527,13 @@ async function onFile(e) {
 /* Floating button (draggable) + init                                  */
 /* ------------------------------------------------------------------ */
 async function openPanel() {
+    try { await openPanelInner(); } catch (e) {
+        console.error('[Jobs] open failed', e);
+        try { toastr.error(`Jobs & Career: ${e?.message || e}`); } catch { /* ignore */ }
+    }
+}
+
+async function openPanelInner() {
     ui.open = true;
     document.getElementById('jx_panel').classList.add('jx-open');
     if (isOn()) {
@@ -1532,13 +1542,18 @@ async function openPanel() {
         ui.contacts = bank.contacts ? await PhoneBridge.getContacts() : [];
     }
     renderPanel();
+    setTimeout(rescuePanel, 120);
 }
 function togglePanel() { ui.open ? onClick({ target: document.querySelector('#jx_panel [data-a="close"]') }) : openPanel(); }
 
 function initFab(fab) {
     const clamp = (x, y) => [Math.min(Math.max(0, x), window.innerWidth - fab.offsetWidth), Math.min(Math.max(0, y), window.innerHeight - fab.offsetHeight)];
     const place = (x, y) => { [x, y] = clamp(x, y); fab.style.left = x + 'px'; fab.style.top = y + 'px'; fab.style.right = 'auto'; fab.style.bottom = 'auto'; };
-    try { const pos = JSON.parse(localStorage.getItem(LS_FAB) || 'null'); if (pos) place(pos.x, pos.y); } catch { /* ignore */ }
+    try {
+        const pos = JSON.parse(localStorage.getItem(LS_FAB) || 'null');
+        if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) && pos.x >= 0 && pos.y >= 0 && pos.x <= window.innerWidth - 24 && pos.y <= window.innerHeight - 24) place(pos.x, pos.y);
+        else if (pos) localStorage.removeItem(LS_FAB);
+    } catch { /* ignore */ }
     let drag = null;
     let wasDragged = false;
     fab.addEventListener('pointerdown', (e) => {
@@ -1560,6 +1575,63 @@ function initFab(fab) {
     fab.addEventListener('pointerup', end);
     fab.addEventListener('pointercancel', () => { drag = null; });
     window.addEventListener('resize', () => { if (fab.style.left) place(fab.offsetLeft, fab.offsetTop); });
+}
+
+/* ------------------------------------------------------------------ */
+/* Visibility rescue (phones): off-screen / covered / reset            */
+/* ------------------------------------------------------------------ */
+function rescueProblem(el) {
+    try {
+        const r = el.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        if (r.width < 20 || r.height < 20) return 'size';
+        if (r.bottom < 24 || r.top > vh - 24 || r.right < 24 || r.left > vw - 24) return 'off';
+        const x = Math.min(Math.max(r.left + r.width / 2, 1), vw - 1);
+        const y = Math.min(Math.max(r.top + r.height / 2, 1), vh - 1);
+        const top = document.elementFromPoint(x, y);
+        if (top && !el.contains(top)) return 'covered';
+    } catch { /* ignore */ }
+    return '';
+}
+
+function resetFabPos() {
+    try { localStorage.removeItem(LS_FAB); } catch { /* ignore */ }
+    const fab = document.getElementById('jx_fab');
+    if (fab) for (const k of ['left', 'top', 'right', 'bottom', 'zIndex']) fab.style[k] = '';
+}
+
+function rescueFab() {
+    const fab = document.getElementById('jx_fab');
+    if (!fab || fab.style.display === 'none') return;
+    const p = rescueProblem(fab);
+    if (p === 'off') { console.warn('[Jobs] floating button was off-screen, resetting'); resetFabPos(); }
+    else if (p === 'covered') { console.warn('[Jobs] floating button was covered, raising'); fab.style.zIndex = '10050'; }
+}
+
+function rescuePanel() {
+    const panel = document.getElementById('jx_panel');
+    if (!panel || !ui.open) return;
+    const p = rescueProblem(panel);
+    if (p === 'off' || p === 'size') {
+        console.warn('[Jobs] panel was off-screen, re-anchoring');
+        Object.assign(panel.style, { left: '0', right: '0', top: 'auto', bottom: '0', width: '100%', maxWidth: '100%', height: '80vh' });
+    } else if (p === 'covered') { console.warn('[Jobs] panel was covered, raising'); panel.style.zIndex = '10050'; }
+}
+
+function closeWandMenu() {
+    try { window.$?.('#extensionsMenu').hide(); } catch { /* ignore */ }
+    try { document.body.click(); } catch { /* ignore */ }
+}
+
+// /jobs opens the panel (handy on phones)
+async function registerSlash() {
+    const run = async () => { await openPanel(); return ''; };
+    try {
+        const [{ SlashCommandParser }, { SlashCommand }] = await Promise.all([import('../../../slash-commands/SlashCommandParser.js'), import('../../../slash-commands/SlashCommand.js')]);
+        SlashCommandParser.addCommandObject(SlashCommand.fromProps({ name: 'jobs', callback: run, helpString: 'Open the Jobs & Career panel.' }));
+    } catch {
+        try { getContext().registerSlashCommand?.('jobs', run, [], 'Open the Jobs & Career panel.', true, true); } catch { /* ignore */ }
+    }
 }
 
 function buildUi() {
@@ -1588,7 +1660,7 @@ function buildUi() {
         const item = document.createElement('div');
         item.className = 'list-group-item flex-container flexGap5';
         item.innerHTML = '<div class="fa-solid fa-briefcase extensionsMenuExtensionButton"></div>Jobs';
-        item.addEventListener('click', openPanel);
+        item.addEventListener('click', () => { openPanel(); closeWandMenu(); });
         menu.appendChild(item);
     }
 
@@ -1604,6 +1676,13 @@ function buildUi() {
 }
 
 jQuery(async () => {
+    try { await initJobs(); } catch (e) {
+        console.error('[Jobs] init failed', e);
+        try { toastr.error(`Jobs & Career failed to start: ${e?.message || e}`); } catch { /* ignore */ }
+    }
+});
+
+async function initJobs() {
     S();
     buildUi();
     if (hasChat()) ensurePeople();
@@ -1611,7 +1690,7 @@ jQuery(async () => {
     rerenderAll();
     applyPrompt();
     const { eventSource, event_types } = ST;
-    eventSource.on(event_types.CHAT_CHANGED, async () => { ui.selected = 'user'; ui.ideas = []; ui.exp = {}; if (hasChat()) ensurePeople(); await refreshBank(); await checkOverdue(); applyPrompt(); rerenderAll(); });
+    eventSource.on(event_types.CHAT_CHANGED, async () => { ui.selected = 'user'; ui.ideas = []; ui.exp = {}; if (hasChat()) ensurePeople(); await refreshBank(); await checkOverdue(); applyPrompt(); rerenderAll(); setTimeout(rescueFab, 1000); });
     const genEvt = event_types.GENERATION_AFTER_COMMANDS || event_types.GENERATION_STARTED;
     eventSource.on(genEvt, async () => { await refreshBank(); await checkOverdue(); applyPrompt(); });
     eventSource.on(event_types.MESSAGE_RECEIVED, async (id) => {
@@ -1622,5 +1701,8 @@ jQuery(async () => {
         } catch (e) { console.warn('[Jobs] message handling failed', e); }
         if (ui.open) renderPanel();
     });
+    registerSlash();
+    setTimeout(rescueFab, 1500);
+    window.addEventListener('orientationchange', () => setTimeout(() => { rescueFab(); rescuePanel(); }, 400));
     console.log('[Jobs & Career] loaded');
-});
+}
