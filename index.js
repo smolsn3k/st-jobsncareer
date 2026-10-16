@@ -5,7 +5,7 @@ import * as ST from '../../../../script.js';
 import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
-const VERSION = '0.3.0';
+const VERSION = '0.3.1';
 const LS_OPACITY = 'jobsext_opacity';
 const LS_FAB = 'jobsext_fab_pos';
 
@@ -1903,6 +1903,7 @@ function initFab(fab) {
         layoutFab(fab);
         const panel = byId('jx_panel');
         if (panel && ui.open && !ui.popup) layoutPanel(panel);
+        if (panel && ui.popup) fitEmbedded(panel, panel.parentElement);
     });
 }
 
@@ -1940,12 +1941,13 @@ async function openPopup() {
     let pop;
     const restore = () => {
         panel.classList.remove('jx-embedded');
+        clearPanelLayout(panel);
         document.body.appendChild(panel);
         showPanel(false);
         ui.popup = false; ui.open = false; ui.popupRef = null;
     };
     try {
-        pop = new Popup(holder, TYPE.TEXT, '', { wide: true, large: true, okButton: t('close'), cancelButton: false, allowVerticalScrolling: false, onOpen: () => { try { renderPanel(); } catch (e) { console.warn(e); } } });
+        pop = new Popup(holder, TYPE.TEXT, '', { wide: true, large: true, okButton: t('close'), cancelButton: false, allowVerticalScrolling: false, onOpen: () => { try { fitEmbedded(panel, holder); renderPanel(); } catch (e) { console.warn(e); } } });
     } catch (e) { console.warn('[Jobs] popup unavailable, using the floating panel', e); restore(); return false; }
     ui.popupRef = pop;
     if (isOn()) {
@@ -1956,6 +1958,18 @@ async function openPopup() {
     renderPanel();
     try { await pop.show(); } finally { restore(); }
     return true;
+}
+
+// Inside a popup the panel gets an explicit pixel width, so it can never be wider than the screen
+function fitEmbedded(panel, holder) {
+    if (!panel || !holder) return;
+    const left = holder.getBoundingClientRect().left;
+    const margin = Math.max(8, Number.isFinite(left) ? left : 8);
+    const w = Math.max(260, Math.min(window.innerWidth - margin * 2, 900));
+    panel.style.setProperty('width', w + 'px', 'important');
+    panel.style.setProperty('max-width', w + 'px', 'important');
+    holder.style.maxWidth = w + 'px';
+    holder.style.margin = '0 auto';
 }
 
 function describeEl(el) {
@@ -2067,8 +2081,9 @@ function buildUi() {
     panel.addEventListener('change', (e) => { if (e.target.id === 'jx_file') onFile(e); });
 
     const fab = document.createElement('div');
-    fab.id = 'jx_fab'; fab.textContent = '💼'; fab.title = t('title');
-    fab.style.cssText = 'position:fixed;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;background:var(--SmartThemeBlurTintColor,#222);border:2px solid var(--SmartThemeQuoteColor,#7aa2ff);box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none;touch-action:none;';
+    fab.id = 'jx_fab'; fab.title = t('title');
+    fab.innerHTML = '<svg viewBox="0 -0.5 24 24" width="26" height="26" aria-hidden="true" style="display:block;pointer-events:none"><path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" fill="none" stroke="#a0561c" stroke-width="1.8" stroke-linecap="round"/><rect x="2.5" y="6" width="19" height="14" rx="2.5" fill="#c97a3a" stroke="#8a4513" stroke-width="1"/><path d="M2.5 11.5h19" stroke="#8a4513" stroke-width=".8" opacity=".6"/><rect x="10.5" y="11" width="3" height="4" rx=".7" fill="#f2c14e" stroke="#b8860b" stroke-width=".6"/></svg>';
+    fab.style.cssText = 'position:fixed;box-sizing:border-box;padding:0;margin:0;line-height:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;background:var(--SmartThemeBlurTintColor,#222);border:2px solid var(--SmartThemeQuoteColor,#7aa2ff);box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none;touch-action:none;';
     fabDefaults(fab);
     document.body.appendChild(fab);
     initFab(fab);

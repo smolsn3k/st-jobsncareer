@@ -207,3 +207,13 @@
 .jx-fgrid { padding: 4px 12px 12px; }
 .jx-it b { font-size: 1.05em; }
 #jx_panel .jx-apply { background: color-mix(in srgb, #52c97a 35%, transparent); font-weight: 700; }
+
+/* ---------- Layout fixes: alignment inside popups, checkboxes, button icon ---------- */
+#jx_panel { text-align: left; }
+#jx_panel .jx-sh, #jx_panel .jx-st { text-align: left; }
+#jx_panel input[type=checkbox], #jx_settings_body input[type=checkbox] {
+    flex: 0 0 auto; width: 1.3em !important; height: 1.3em !important; min-width: 1.3em; aspect-ratio: 1 / 1; margin: 0 !important;
+}
+#jx_panel .jx-head { flex-wrap: nowrap; }
+#jx_panel .jx-head .menu_button { flex: 0 0 auto; }
+#jx_fab { overflow: hidden; }
