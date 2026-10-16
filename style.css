@@ -217,3 +217,12 @@
 #jx_panel .jx-head { flex-wrap: nowrap; }
 #jx_panel .jx-head .menu_button { flex: 0 0 auto; }
 #jx_fab { overflow: hidden; }
+
+/* ---------- Search feedback ---------- */
+.jx-spin { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: jxspin .7s linear infinite; vertical-align: -2px; }
+@keyframes jxspin { to { transform: rotate(360deg); } }
+#jx_panel .jx-go { transition: transform .08s; }
+#jx_panel .jx-go:active { transform: scale(.94); }
+#jx_panel .jx-go.jx-busybtn, #jx_panel .jx-go[disabled] { opacity: .85; pointer-events: none; background: color-mix(in srgb, var(--jx-accent) 45%, transparent); }
+.jx-skel { height: 92px; margin: 8px 0; border-radius: 12px; background: linear-gradient(100deg, var(--jx-soft) 30%, var(--jx-soft2) 50%, var(--jx-soft) 70%); background-size: 200% 100%; animation: jxshimmer 1.2s linear infinite; }
+@keyframes jxshimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }

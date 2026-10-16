@@ -5,7 +5,7 @@ import * as ST from '../../../../script.js';
 import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
-const VERSION = '0.3.1';
+const VERSION = '0.3.2';
 const LS_OPACITY = 'jobsext_opacity';
 const LS_FAB = 'jobsext_fab_pos';
 
@@ -78,7 +78,7 @@ const I18N = {
         settingsTip: 'Settings', back: 'Back',
         resetFab: 'Reset floating button position', fabReset: 'Floating button reset.',
         s_display: 'Display', dm_auto: 'Auto (popup window on phones)', dm_floating: 'Floating panel', dm_popup: 'Popup window', uiDiag: 'Interface diagnostics', uiDiagHint: 'Copy this and send it to the developer if the panel or button does not show.',
-        apply: 'Apply', boardTitle: 'Job board', searchBtn: 'Search', kwPh: 'Field, skills or keywords (optional)', fAny: 'Any', fMode: 'Work mode', fIns: 'Insurance included', fMinPay: 'Min pay / month', fMinVac: 'Min vacation days', countLbl: 'Jobs to find',
+        apply: 'Apply', boardTitle: 'Job board', searchBtn: 'Search', kwPh: 'Field or keywords (leave empty for random jobs)', searchingBtn: 'Searching…', found: 'Jobs found', lookingFor: 'Looking for jobs that fit this world…', fAny: 'Any', fMode: 'Work mode', fIns: 'Insurance included', fMinPay: 'Min pay / month', fMinVac: 'Min vacation days', countLbl: 'Jobs to find',
         tf_any: 'Any', tf_standard: 'Full-time', tf_parttime: 'Part-time', tf_teen: 'Teen', tf_freelance: 'Freelance', tf_adult: 'Adult 18+', results: 'Results', noMatch: 'Nothing matched the filters.', est: 'estimated',
         sec_work: 'Work & payday', shiftStart: 'Start shift', shiftEnd: 'End shift', shiftHours: 'Hours', shiftHoursDefault: 'Default shift length (hours)', onShift: 'On shift', shiftsDone: 'Shifts', hoursTotal: 'Hours', expLbl: 'EXP',
         autoPay: 'Pay automatically on payday', nextPay: 'Next payday', lastPaid: 'Last payday (cycle start)', needDate: 'Automatic payday needs the Phone-ST story date (Phone sync → Story date).',
@@ -152,7 +152,7 @@ const I18N = {
         settingsTip: 'Настройки', back: 'Назад',
         resetFab: 'Сбросить положение плавающей кнопки', fabReset: 'Плавающая кнопка сброшена.',
         s_display: 'Отображение', dm_auto: 'Авто (всплывающее окно на телефонах)', dm_floating: 'Плавающая панель', dm_popup: 'Всплывающее окно', uiDiag: 'Диагностика интерфейса', uiDiagHint: 'Скопируйте и отправьте разработчику, если панель или кнопка не отображаются.',
-        apply: 'Откликнуться', boardTitle: 'Биржа вакансий', searchBtn: 'Искать', kwPh: 'Сфера, навыки или ключевые слова (необязательно)', fAny: 'Любой', fMode: 'Формат работы', fIns: 'Со страховкой', fMinPay: 'Мин. оплата / месяц', fMinVac: 'Мин. дней отпуска', countLbl: 'Сколько вакансий',
+        apply: 'Откликнуться', boardTitle: 'Биржа вакансий', searchBtn: 'Искать', kwPh: 'Сфера или ключевые слова (пусто — случайные вакансии)', searchingBtn: 'Ищу…', found: 'Найдено вакансий', lookingFor: 'Ищу вакансии, подходящие этому миру…', fAny: 'Любой', fMode: 'Формат работы', fIns: 'Со страховкой', fMinPay: 'Мин. оплата / месяц', fMinVac: 'Мин. дней отпуска', countLbl: 'Сколько вакансий',
         tf_any: 'Любые', tf_standard: 'Полный день', tf_parttime: 'Подработка', tf_teen: 'Для подростков', tf_freelance: 'Фриланс', tf_adult: '18+', results: 'Результаты', noMatch: 'Ничего не подошло под фильтры.', est: 'оценка',
         sec_work: 'Работа и день зарплаты', shiftStart: 'Начать смену', shiftEnd: 'Закончить смену', shiftHours: 'Часов', shiftHoursDefault: 'Длина смены по умолчанию (часов)', onShift: 'На смене', shiftsDone: 'Смен', hoursTotal: 'Часов', expLbl: 'Опыт',
         autoPay: 'Платить автоматически в день зарплаты', nextPay: 'Следующая зарплата', lastPaid: 'Последняя зарплата (начало цикла)', needDate: 'Для автоматической зарплаты нужна сюжетная дата Phone-ST (синхронизация → сюжетная дата).',
@@ -1033,6 +1033,21 @@ function monthlyEq(amount, period) {
     return m ? amount * m : null;
 }
 
+const SECTORS = {
+    modern: ['hospitality', 'tech', 'healthcare', 'retail', 'creative work', 'skilled trades', 'education', 'logistics', 'finance', 'media and entertainment', 'fitness', 'beauty and wellness', 'nightlife', 'public service', 'food and cooking', 'transport'],
+    fantasy: ['taverns and inns', 'smithing and crafts', 'magic academies', 'temples', 'farming and herding', 'caravans and trade', 'the adventurers guild', 'alchemy and herbalism', 'the royal court', 'the city watch', 'ships and ports', 'bards and entertainers'],
+    scifi: ['station operations', 'ship crews', 'colony work', 'corporate offices', 'mining and salvage', 'engineering', 'medical bays', 'trade and smuggling', 'security', 'entertainment districts'],
+    cyberpunk: ['megacorp offices', 'street markets', 'hacking and netrunning', 'clinics and augmentation', 'security and bodyguards', 'courier and delivery', 'nightclubs', 'media and streaming', 'repair and mechanics'],
+    historical: ['crafts and guilds', 'farming', 'trade and markets', 'service and households', 'clerks and scribes', 'inns and taverns', 'transport and docks', 'healers', 'performers'],
+    postapoc: ['scavenging', 'settlement guard duty', 'trading posts', 'mechanics and salvage', 'farming and water', 'medicine', 'caravans', 'bars and entertainment'],
+    steampunk: ['factories', 'airships', 'inventors and workshops', 'clerks and offices', 'railways', 'guilds and trades', 'theatres and entertainment', 'tea houses and inns'],
+};
+function randomSectors(preset, n = 3) {
+    const list = [...(SECTORS[preset] || [...SECTORS.modern, ...SECTORS.fantasy])];
+    for (let i = list.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [list[i], list[k]] = [list[k], list[i]]; }
+    return list.slice(0, n);
+}
+
 function resumeText(p) {
     const r = p.resume || {};
     if (!r.skills && !r.seeking) return '';
@@ -1052,8 +1067,9 @@ async function searchIdeas(f) {
     if (f.insurance) cons.push('health insurance included');
     if (Number(f.minVac) > 0) cons.push(`at least ${Number(f.minVac)} paid vacation days per year`);
     if (Number(f.minPay) > 0) cons.push(`pay of at least ${Number(f.minPay)} ${cur} per month (or the equivalent)`);
-    if ((f.keyword || '').trim()) cons.push(`field / keywords: ${f.keyword.trim()}`);
-    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${wt ? `World/setting: ${wt}\nThe jobs must fit this world: adapt occupation names, employers and pay to it.\n` : ''}${resumeText(p)}Context:\n${cardText()}\n\nSuggest ${count} ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.${kind === 'any' ? `\nAlso include a "type" key, one of: ${allowed.join('|')}.` : ''}${cons.length ? `\nRequirements: ${cons.join('; ')}.` : ''}\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
+    const noField = !(f.keyword || '').trim();
+    if (!noField) cons.push(`field / keywords: ${f.keyword.trim()}`);
+    const prompt = `Character: ${p.name}. Age group: ${p.group}.\n${wt ? `World/setting: ${wt}\nThe jobs must fit this world: adapt occupation names, employers and pay to it.\n` : ''}${resumeText(p)}Context:\n${cardText()}\n\nSuggest ${count} ${KIND_HINT[kind]} that fit this character${p.resume?.seeking ? ' and what they are looking for' : ''}.${kind === 'any' ? `\nAlso include a "type" key, one of: ${allowed.join('|')}.` : ''}${cons.length ? `\nRequirements: ${cons.join('; ')}.` : ''}${noField ? `\nNo specific field was requested, so offer a varied, surprising mix of jobs that fit the world setting (avoid the most obvious picks and do not repeat similar jobs). Consider sectors such as: ${randomSectors(D().world?.preset).join(', ')}. Variation seed: ${Math.random().toString(36).slice(2, 8)}.` : ''}\nEvery offer MUST have a realistic numeric salary in ${cur} (amount + period), paid vacation days per year, and whether health insurance is included.\nJSON array of objects with keys: ${JOB_JSON_SPEC}.\nWrite text values in ${outLang()}.`;
     let out = parseJsonArray(await llm(prompt, sys)).map((x) => normalizeOffer(x, kind));
     out = out.filter((o) => (o.type !== 'adult' || canAdult(p)) && (o.type !== 'teen' || canTeen(p)));
     await ensureSalaries(out, cur, sys);
@@ -1362,7 +1378,7 @@ function renderBoard(p) {
     if (!types.includes(f.type)) f.type = 'any';
     const modes = ['any', ...MODES.filter((m) => m !== 'anywhere')];
     return `<div class="jx-board"><div class="jx-bh">🔎 ${t('boardTitle')}</div>
-      <div class="jx-searchbar"><input type="text" data-fl="keyword" value="${esc(f.keyword)}" placeholder="${esc(t('kwPh'))}"><button class="menu_button jx-go" data-a="searchBoard">🔎 ${t('searchBtn')}</button></div>
+      <div class="jx-searchbar"><input type="text" data-fl="keyword" value="${esc(f.keyword)}" placeholder="${esc(t('kwPh'))}"><button class="menu_button jx-go ${ui.busy === 'searchBoard' ? 'jx-busybtn' : ''}" data-a="searchBoard" ${ui.busy ? 'disabled' : ''}>${ui.busy === 'searchBoard' ? `<span class="jx-spin"></span> ${t('searchingBtn')}` : `🔎 ${t('searchBtn')}`}</button></div>
       <div class="jx-chips jx-filters">${types.map((k) => `<button class="jx-fchip ${f.type === k ? 'jx-on' : ''}" data-a="filterType" data-v="${k}">${k === 'adult' ? '🔞 ' : ''}${esc(t('tf_' + k))}</button>`).join('')}</div>
       <div class="jx-grid jx-fgrid">
         <label class="jx-f"><span>${t('fMode')}</span><select data-fl="mode">${modes.map((m) => `<option value="${m}" ${f.mode === m ? 'selected' : ''}>${esc(m === 'any' ? t('fAny') : t('m_' + m))}</option>`).join('')}</select></label>
@@ -1457,8 +1473,9 @@ function renderPanel() {
     h += '</div>';
 
     if (s.opt.importExport) h += `<div class="jx-row"><button class="menu_button" data-a="export">⬇ ${t('export')}</button><button class="menu_button" data-a="import">⬆ ${t('import')}</button><input type="file" id="jx_file" accept=".json" hidden></div>`;
-    if (ui.busy) h += `<div class="jx-busy">⏳ ${t('searching')}</div>`;
-    if (ui.ideas.length && ui.ideaFor === p.id) h += `<div class="jx-st">${t('results')} (${ui.ideas.length})</div>${ui.ideas.map(ideaCard).join('')}`;
+    if (ui.busy === 'searchBoard') h += `<div class="jx-st jx-results">${t('results')}</div><div class="jx-busy"><span class="jx-spin"></span> ${t('lookingFor')}</div>${[1, 2, 3].map(() => '<div class="jx-skel"></div>').join('')}`;
+    else if (ui.busy) h += `<div class="jx-busy">⏳ ${t('searching')}</div>`;
+    if (ui.ideas.length && ui.ideaFor === p.id) h += `<div class="jx-st jx-results">${t('results')} (${ui.ideas.length})</div>${ui.ideas.map(ideaCard).join('')}`;
 
     const jobs = p.jobs.filter((j) => jobVisibleFor(p, j));
     h += `<div class="jx-st">💼 ${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-empty">${t('noJobs')}</div>`);
@@ -1702,15 +1719,17 @@ async function onClick(e) {
         case 'archiveJob': jp.history.push(clone(j)); jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange();
         case 'filterType': ui.filters.type = el.dataset.v; saveFilters(); return renderPanel();
         case 'searchBoard': case 'scan': {
-            if (!canWork(p)) return;
+            if (!canWork(p) || ui.busy) return;
             const f = ui.filters;
             if (a === 'searchBoard' && ((f.type === 'teen' && !canTeen(p)) || (f.type === 'adult' && !canAdult(p)))) return;
-            ui.busy = a; ui.ideas = []; ui.ideaFor = p.id; renderPanel();
+            const jump = () => setTimeout(() => byId('jx_body')?.querySelector('.jx-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+            ui.busy = a; ui.ideas = []; ui.ideaFor = p.id; renderPanel(); jump();
             try {
                 ui.ideas = a === 'searchBoard' ? await searchIdeas(f) : await scanJobs();
                 if (!ui.ideas.length) toastr.info(t(a === 'searchBoard' ? 'noMatch' : 'noIdeas'));
+                else toastr.success(`${t('found')}: ${ui.ideas.length}`);
             } catch (err) { console.error(err); toastr.error(t('errApi')); }
-            ui.busy = ''; return renderPanel();
+            ui.busy = ''; renderPanel(); jump(); return;
         }
         case 'shiftStart': await startShift(jp, j); return afterChange();
         case 'shiftEnd': {
