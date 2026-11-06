@@ -45,7 +45,16 @@ The **World** card at the top of the panel sets the setting for the chat: Modern
 
 - Job searches use the world, so a fantasy chat gets blacksmiths and guild work, paid in the world's currency. The description is also sent to the model with the job info (Modern with no description sends nothing).
 - **Scan lorebook** reads the active lorebook entries (global, character and chat books) and asks your model to write the world description, type and currency for you. **Scan character card** does the same from the card text. Review the result before relying on it.
+- **Generate from a fandom:** type a franchise (or tap a suggestion such as Naruto, Harry Potter or Borderlands) and press **Generate world**. Your model writes the setting, currency and a description of working life from what it knows about the franchise. Check the result, because a model that doesn't know a franchise well may guess; edit it freely.
 - **Save as world** stores the current world in a library that is shared between chats; load or delete saved worlds from the same card. The active world itself belongs to the chat.
+
+## Saved jobs
+
+Press **💾 Save job** on any job card to store it in a library that is shared between all chats and people (pay, vacation days, insurance, schedule and settings are kept; progress like EXP, tasks and earnings is not). Open **📁 Saved jobs** under the job board and press **Use for …** to add a fresh copy for the person currently selected, in this chat or any other. Age rules still apply (for example adult jobs only for adults). Inside a chat you can also copy a job straight to another person with **Copy to**.
+
+## Appearance
+
+Pick an **Accent color** in the General settings (or keep your SillyTavern theme color). The panel, cards, meters and floating button follow it.
 
 ## Shifts, payday and rewards
 

@@ -5,7 +5,7 @@ import * as ST from '../../../../script.js';
 import { extension_settings, getContext } from '../../../extensions.js';
 
 const MODULE = 'jobs_ext';
-const VERSION = '0.3.2';
+const VERSION = '0.4.0';
 const LS_OPACITY = 'jobsext_opacity';
 const LS_FAB = 'jobsext_fab_pos';
 
@@ -85,6 +85,9 @@ const I18N = {
         paidOnShift: 'Paid automatically when a shift ends.', paidPerTask: 'Freelance work is paid per task.', taskHintPay: 'Freelance tasks pay money when done.', taskHintExp: 'Regular-job tasks are not paid separately: they give EXP, which also fills promotion progress.',
         s_autoPay: 'Pay salaries automatically on payday (story date)', s_taskExp: 'Default EXP per task (regular jobs)', p_shift: 'shift',
         log_shift_start: 'shift started', log_shift_end: 'shift ended', log_payday: 'payday', log_exp: 'EXP', noShiftLeave: 'Cannot start a shift while on leave.',
+        fandomLbl: 'Generate from a fandom', fandomPh: 'e.g. Naruto, Harry Potter, Borderlands…', fandomBtn: 'Generate world', fandomHint: "Written by your model from what it knows about the franchise. Check the result and edit it freely; if the model doesn't know the franchise well it may guess.", fandomEmpty: 'Enter a franchise name first.',
+        savedJobs: 'Saved jobs', saveJob: 'Save job', copyTo: 'Copy to', useFor: 'Use for', tplSaved: 'Job saved to your library.', tplUsed: 'Job added.', tplEmpty: 'Save a job with the 💾 button on its card to reuse it for another person or in another chat.', tplBlocked: 'This job is not allowed for this age group.', tplCopied: 'Job copied.',
+        s_accent: 'Accent color', accentTheme: 'Theme',
         langName: 'English', evPaid: 'Payment received', evLeave: 'Leave started', evLeaveEnd: 'Leave ended', evTask: 'Task update',
     },
     ru: {
@@ -159,6 +162,9 @@ const I18N = {
         paidOnShift: 'Оплата приходит автоматически после окончания смены.', paidPerTask: 'Фриланс оплачивается за задания.', taskHintPay: 'Задания фриланса приносят деньги при выполнении.', taskHintExp: 'Задания на обычной работе отдельно не оплачиваются: они дают опыт, который также заполняет прогресс повышения.',
         s_autoPay: 'Платить зарплату автоматически в день зарплаты (сюжетная дата)', s_taskExp: 'Опыт за задание по умолчанию (обычная работа)', p_shift: 'смена',
         log_shift_start: 'смена началась', log_shift_end: 'смена закончилась', log_payday: 'день зарплаты', log_exp: 'опыт', noShiftLeave: 'Нельзя начать смену во время отпуска.',
+        fandomLbl: 'Создать мир по фандому', fandomPh: 'например: Наруто, Гарри Поттер, Borderlands…', fandomBtn: 'Создать мир', fandomHint: 'Мир пишет ваша модель по тому, что знает о франшизе. Проверьте результат и отредактируйте; если модель плохо знает франшизу, она может ошибиться.', fandomEmpty: 'Сначала введите название франшизы.',
+        savedJobs: 'Сохранённые работы', saveJob: 'Сохранить работу', copyTo: 'Копировать', useFor: 'Взять для', tplSaved: 'Работа сохранена в библиотеку.', tplUsed: 'Работа добавлена.', tplEmpty: 'Сохраните работу кнопкой 💾 на её карточке, чтобы использовать её для другого персонажа или в другом чате.', tplBlocked: 'Эта работа недоступна для этой возрастной группы.', tplCopied: 'Работа скопирована.',
+        s_accent: 'Цвет акцента', accentTheme: 'Тема',
         langName: 'Russian', evPaid: 'Получена оплата', evLeave: 'Отпуск начался', evLeaveEnd: 'Отпуск закончился', evTask: 'Задание обновлено',
     },
 };
@@ -183,6 +189,8 @@ const DEFAULTS = {
     displayMode: 'auto',
     phone: { all: true, bank: true, calendar: true, contacts: true, storyDate: true },
     tags: true,
+    accent: '',
+    jobTemplates: [],
     taskExp: 10,
     autoPay: true,
     newChatsOff: false,
@@ -925,6 +933,21 @@ async function scanWorld(source) {
     w.description = String(o.description).trim();
 }
 
+const FANDOM_PICKS = ['Naruto', 'Harry Potter', 'Borderlands', 'The Witcher', 'Star Wars', 'Fallout', 'One Piece', 'Genshin Impact'];
+
+// Asks the model to describe a known franchise's world (from its own knowledge) for job generation
+async function fandomWorld(name) {
+    const sys = 'You summarize fictional universes for a roleplay tool. Reply with ONLY a JSON object, no commentary.';
+    const prompt = `Franchise / fandom: "${name}".\nDescribe its world so it can be used to invent fitting jobs. Only use what you actually know about it; if you do not know this franchise well, say so briefly in the description instead of inventing facts.\nJSON object with keys: preset (one of ${WORLD_IDS.join('|')}), currency (the money used there as a symbol or short name such as "ryō", "galleons", "$", or ""), description (max 220 words: setting and era, technology or magic level, economy, typical occupations and employers, major organizations or factions, notable locations, anything unusual about working life).\nWrite in ${outLang()}.`;
+    const o = parseJsonObject(await llm(prompt, sys));
+    if (!o || !o.description) throw new Error('parse');
+    const w = D().world;
+    w.preset = WORLD_IDS.includes(o.preset) ? o.preset : 'custom';
+    w.currency = o.currency ? String(o.currency).slice(0, 20) : w.currency;
+    w.description = String(o.description).trim();
+    w.fandom = name;
+}
+
 /* ------------------------------------------------------------------ */
 /* LLM helper                                                          */
 /* ------------------------------------------------------------------ */
@@ -1174,7 +1197,7 @@ const LS_FILTERS = 'jobsext_filters';
 const FILTER_DEFAULTS = { type: 'any', mode: 'any', insurance: false, minPay: 0, minVac: 0, keyword: '', count: 4 };
 function loadFilters() { try { return { ...FILTER_DEFAULTS, ...(JSON.parse(localStorage.getItem(LS_FILTERS) || 'null') || {}) }; } catch { return { ...FILTER_DEFAULTS }; } }
 const saveFilters = () => { try { localStorage.setItem(LS_FILTERS, JSON.stringify(ui.filters)); } catch { /* ignore */ } };
-const ui = { filters: loadFilters(), view: 'main', setSec: loadSetSec(), open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
+const ui = { tplOpen: false, filters: loadFilters(), view: 'main', setSec: loadSetSec(), open: false, selected: 'user', botId: null, exp: {}, sec: {}, resume: false, worldOpen: false, logOpen: false, ideas: [], busy: '', ideaFor: null, contacts: [] };
 
 function opacity() { const v = parseFloat(localStorage.getItem(LS_OPACITY)); return Number.isNaN(v) ? 1 : v; }
 
@@ -1352,7 +1375,56 @@ function renderJob(p, j) {
         if (s.opt.sliders) more += fld(j, 'stress', t('stress'), 'range') + fld(j, 'satisfaction', t('satisfaction'), 'range') + `<div class="jx-hint">${t('slidersHint')}</div>`;
         if (s.opt.autosummary) more += fld(j, 'summary', t('summary'), 'area') + `<button class="menu_button" data-a="summarize" data-j="${j.id}">${t('summarize')}</button>`;
         if (more) h += sec(j, 'more', '✨', t('sec_more'), more);
+        h += renderJobTools(p, j);
         h += `<div class="jx-row jx-end">${s.opt.history ? `<button class="menu_button" data-a="archiveJob" data-j="${j.id}">📦 ${t('archive')}</button>` : ''}<button class="menu_button" data-a="delJob" data-j="${j.id}">🗑 ${t('del')}</button></div></div>`;
+    }
+    return h + '</div>';
+}
+
+function jobToTemplate(j) {
+    return {
+        id: uid(), name: `${j.title || '—'}${j.employer ? ' — ' + j.employer : ''}`,
+        job: {
+            title: j.title, employer: j.employer, category: j.category, type: j.type, mode: j.mode, schedule: j.schedule, insurance: !!j.insurance, description: j.description || '',
+            amount: j.salary.amount, currency: j.salary.currency, period: j.salary.period, rateType: j.salary.rateType,
+            vacationDays: j.leave.balances.vacation.allowance, promoEnabled: !!j.promo?.enabled, promoRaise: j.promo?.raise, reducedPct: j.reducedPct, shiftHours: j.shift?.hours,
+        },
+    };
+}
+function templateToJob(tpl) {
+    const x = tpl.job;
+    const nj = newJob({ title: x.title, employer: x.employer, category: x.category, type: x.type, mode: x.mode, schedule: x.schedule, insurance: x.insurance, description: x.description, amount: x.amount, currency: x.currency, period: x.period, rateType: x.rateType, vacationDays: x.vacationDays });
+    if (x.promoEnabled != null) nj.promo.enabled = x.promoEnabled;
+    if (x.promoRaise != null) nj.promo.raise = x.promoRaise;
+    if (x.reducedPct != null) nj.reducedPct = x.reducedPct;
+    if (x.shiftHours) nj.shift.hours = x.shiftHours;
+    return nj;
+}
+function jobAllowedFor(person, type) {
+    if (!canWork(person)) return false;
+    if (type === 'adult') return canAdult(person);
+    if (type === 'teen') return canTeen(person);
+    return true;
+}
+
+function renderJobTools(p, j) {
+    const others = visiblePeople().filter((x) => x.id !== p.id && canWork(x));
+    return `<div class="jx-row jx-tools"><button class="menu_button" data-a="saveTemplate" data-j="${j.id}">💾 ${t('saveJob')}</button>${others.length
+        ? `<select class="jx-copyto"><option value="">${t('copyTo')}…</option>${others.map((o) => `<option value="${esc(o.id)}">${kindIcon(o)} ${esc(o.name)}</option>`).join('')}</select><button class="menu_button" data-a="copyJob" data-j="${j.id}">→</button>` : ''}</div>`;
+}
+
+function renderTemplates(p) {
+    const list = S().jobTemplates;
+    const open = ui.tplOpen;
+    let h = `<div class="jx-card jx-tpl"><div class="jx-sh" data-a="tplToggle"><span>📁 ${t('savedJobs')} (${list.length})</span><span class="jx-chev">${open ? '▾' : '▸'}</span></div>`;
+    if (open) {
+        if (!list.length) h += `<div class="jx-hint">${t('tplEmpty')}</div>`;
+        h += list.map((tp, i) => {
+            const x = tp.job;
+            return `<div class="jx-idea"><div class="jx-it"><b>${esc(x.title || '—')}</b><span class="jx-dim"> ${esc(x.employer || '')}</span></div>
+              <div class="jx-chips">${x.amount ? chip('💰 ' + esc(payLabel(x.amount, x.type === 'freelance' ? x.rateType : x.period, x.type, x.currency)), 'jx-c-pay') : ''}${chip('🏖 ' + esc(x.vacationDays ?? 0))}${x.insurance ? chip('🛡') : ''}${chip(esc(t('tf_' + x.type) || x.type))}</div>
+              <div class="jx-row"><button class="menu_button jx-apply" data-a="useTemplate" data-i="${i}">✔ ${t('useFor')} ${esc(p.name)}</button><button class="menu_button" data-a="delTemplate" data-i="${i}">×</button></div></div>`;
+        }).join('');
     }
     return h + '</div>';
 }
@@ -1377,7 +1449,7 @@ function renderBoard(p) {
     const types = ['any', 'standard', 'parttime', ...(canTeen(p) ? ['teen'] : []), 'freelance', ...(canAdult(p) ? ['adult'] : [])];
     if (!types.includes(f.type)) f.type = 'any';
     const modes = ['any', ...MODES.filter((m) => m !== 'anywhere')];
-    return `<div class="jx-board"><div class="jx-bh">🔎 ${t('boardTitle')}</div>
+    return `<div class="jx-board"><div class="jx-bh">🔎 ${t('boardTitle')} · ${esc(p.name)}</div>
       <div class="jx-searchbar"><input type="text" data-fl="keyword" value="${esc(f.keyword)}" placeholder="${esc(t('kwPh'))}"><button class="menu_button jx-go ${ui.busy === 'searchBoard' ? 'jx-busybtn' : ''}" data-a="searchBoard" ${ui.busy ? 'disabled' : ''}>${ui.busy === 'searchBoard' ? `<span class="jx-spin"></span> ${t('searchingBtn')}` : `🔎 ${t('searchBtn')}`}</button></div>
       <div class="jx-chips jx-filters">${types.map((k) => `<button class="jx-fchip ${f.type === k ? 'jx-on' : ''}" data-a="filterType" data-v="${k}">${k === 'adult' ? '🔞 ' : ''}${esc(t('tf_' + k))}</button>`).join('')}</div>
       <div class="jx-grid jx-fgrid">
@@ -1397,11 +1469,15 @@ function renderWorld() {
         h += `<div class="jx-grid"><label class="jx-f"><span>${t('worldType')}</span><select data-w="preset">${WORLD_IDS.map((id) => `<option value="${id}" ${w.preset === id ? 'selected' : ''}>${esc(t('wp_' + id))}</option>`).join('')}</select></label>
           <label class="jx-f"><span>${t('worldCur')}</span><input type="text" data-w="currency" value="${esc(w.currency)}" placeholder="$ / gold / credits"></label></div>
           <label class="jx-f"><span>${t('worldDesc')}</span><textarea rows="5" data-w="description" placeholder="${esc(t('worldDescPh'))}">${esc(w.description)}</textarea></label>
+          <div class="jx-st">${t('fandomLbl')}</div>
+          <div class="jx-row"><input type="text" class="jx-fandom" data-w="fandom" value="${esc(w.fandom || '')}" placeholder="${esc(t('fandomPh'))}"><button class="menu_button jx-go" data-a="fandomWorld">✨ ${t('fandomBtn')}</button></div>
+          <div class="jx-chips jx-filters">${FANDOM_PICKS.map((n) => `<button class="jx-fchip" data-a="fandomPick" data-v="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+          <div class="jx-hint">${t('fandomHint')}</div>
           <div class="jx-row"><button class="menu_button" data-a="scanWorld" data-k="lore">📚 ${t('scanLore')}</button><button class="menu_button" data-a="scanWorld" data-k="card">🃏 ${t('scanCard')}</button></div>
           <div class="jx-st">${t('savedWorlds')}</div>
           <div class="jx-row"><select class="jx-wsel"><option value="">—</option>${S().worlds.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
             <button class="menu_button" data-a="loadWorld">${t('load')}</button><button class="menu_button" data-a="delWorld">×</button></div>
-          <div class="jx-row"><input type="text" class="jx-wname" placeholder="${esc(t('worldName'))}"><button class="menu_button" data-a="saveWorld">💾 ${t('saveWorld')}</button></div>
+          <div class="jx-row"><input type="text" class="jx-wname" value="${esc(w.fandom || '')}" placeholder="${esc(t('worldName'))}"><button class="menu_button" data-a="saveWorld">💾 ${t('saveWorld')}</button></div>
           <div class="jx-hint">${t('worldHint')}</div>`;
     }
     return h + '</div>';
@@ -1469,6 +1545,7 @@ function renderPanel() {
         h += renderBoard(p);
         h += `<div class="jx-row"><button class="menu_button" data-a="manual">✍ ${t('manual')}</button><button class="menu_button" data-a="scan">📡 ${t('scan')}</button></div>`;
         if (s.adult && p.group !== 'adult') h += `<div class="jx-hint">${t('adultNeedsAge')}</div>`;
+        h += renderTemplates(p);
     }
     h += '</div>';
 
@@ -1478,7 +1555,7 @@ function renderPanel() {
     if (ui.ideas.length && ui.ideaFor === p.id) h += `<div class="jx-st jx-results">${t('results')} (${ui.ideas.length})</div>${ui.ideas.map(ideaCard).join('')}`;
 
     const jobs = p.jobs.filter((j) => jobVisibleFor(p, j));
-    h += `<div class="jx-st">💼 ${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-empty">${t('noJobs')}</div>`);
+    h += `<div class="jx-st">💼 ${t('jobs')}</div>` + (jobs.length ? jobs.map((j) => renderJob(p, j)).join('') : `<div class="jx-empty"><div class="jx-empty-ic">💼</div>${t('noJobs')}</div>`);
     if (s.opt.history && p.history.length) {
         h += `<div class="jx-st">📦 ${t('history')}</div>` + p.history.map((j, i) => `<div class="jx-hist"><div><b>${esc(j.title)}</b> ${j.employer ? '· ' + esc(j.employer) : ''}<span class="jx-dim"> · ${esc(fmt(j.salary.totalEarned, j.salary.currency))}</span></div><div class="jx-ebtn"><button class="menu_button" data-a="restoreJob" data-i="${i}">↩ ${t('restore')}</button><button class="menu_button" data-a="delHist" data-i="${i}">×</button></div></div>`).join('');
     }
@@ -1506,7 +1583,9 @@ function settingsHtml(inPanel) {
     const top = inPanel
         ? `<div class="jx-row"><button class="menu_button" data-a="gear">← ${t('back')}</button></div>`
         : `<div class="menu_button" data-a="openPanel">${t('open')}</div>`;
-    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}<div class="menu_button" data-a="resetFab">${t('resetFab')}</div>
+    const ACCENTS = ['#f2b134', '#ff6b8b', '#3ecf8e', '#a78bfa', '#4cc2ff', '#ff8a5c'];
+    const swatches = `<div class="jx-setrow"><span>${t('s_accent')}</span><div class="jx-swatches"><button class="jx-swatch jx-theme ${s.accent ? '' : 'jx-on'}" data-a="accent" data-v="" title="${t('accentTheme')}">A</button>${ACCENTS.map((c) => `<button class="jx-swatch ${s.accent === c ? 'jx-on' : ''}" data-a="accent" data-v="${c}" style="background:${c}"></button>`).join('')}</div></div>`;
+    const general = `${chk('enabled', t('s_enable'))}${chk('showFab', t('s_fab'))}${swatches}<div class="menu_button" data-a="resetFab">${t('resetFab')}</div>
       <label>${t('s_display')} <select data-s="displayMode" class="text_pole"><option value="auto" ${s.displayMode === 'auto' ? 'selected' : ''}>${t('dm_auto')}</option><option value="floating" ${s.displayMode === 'floating' ? 'selected' : ''}>${t('dm_floating')}</option><option value="popup" ${s.displayMode === 'popup' ? 'selected' : ''}>${t('dm_popup')}</option></select></label>
       <div class="menu_button" data-a="uiDiag">${t('uiDiag')}</div>
       <textarea class="text_pole jx-uidiag" rows="10" readonly hidden placeholder="${esc(t('uiDiagHint'))}"></textarea>${chk('newChatsOff', t('s_newOff'))}${chk('adult', t('s_adult'))}
@@ -1536,8 +1615,17 @@ function renderSettings() {
     if (el) el.innerHTML = settingsHtml(false);
 }
 
+function applyAccent() {
+    const c = S().accent || '';
+    for (const id of ['jx_panel', 'jx_fab']) {
+        const el = byId(id);
+        if (!el) continue;
+        if (c) el.style.setProperty('--jx-accent', c); else el.style.removeProperty('--jx-accent');
+    }
+}
+
 function rerenderAll() {
-    updatePower(); updateFab(); renderPanel(); renderSettings();
+    applyAccent(); updatePower(); updateFab(); renderPanel(); renderSettings();
     const h = document.querySelector('#jx_panel .jx-title'); if (h) h.textContent = '💼 ' + t('title');
 }
 
@@ -1693,6 +1781,16 @@ async function onClick(e) {
             }
             ui.busy = ''; return afterChange();
         }
+        case 'fandomPick': { D().world.fandom = el.dataset.v; ui.worldOpen = true; return afterChange(); }
+        case 'fandomWorld': {
+            if (ui.busy) return;
+            const name = (el.closest('.jx-world').querySelector('.jx-fandom').value || '').trim();
+            if (!name) { toastr.info(t('fandomEmpty')); return; }
+            ui.busy = 'world'; ui.worldOpen = true; renderPanel();
+            try { await fandomWorld(name); toastr.success(t('worldScanned')); }
+            catch (err) { console.error(err); toastr.error(t('errApi')); }
+            ui.busy = ''; return afterChange();
+        }
         case 'saveWorld': {
             const box = el.closest('.jx-world');
             const name = box.querySelector('.jx-wname').value.trim();
@@ -1716,6 +1814,30 @@ async function onClick(e) {
             if (id && confirm(t('confirm'))) { s.worlds = s.worlds.filter((x) => x.id !== id); return afterChange(); }
             return;
         }
+        case 'tplToggle': ui.tplOpen = !ui.tplOpen; return renderPanel();
+        case 'saveTemplate': {
+            const tpl = jobToTemplate(j);
+            const ex = s.jobTemplates.find((x) => x.name.toLowerCase() === tpl.name.toLowerCase());
+            if (ex) { ex.job = tpl.job; } else s.jobTemplates.push(tpl);
+            if (s.jobTemplates.length > 100) s.jobTemplates.shift();
+            toastr.success(t('tplSaved')); return afterChange();
+        }
+        case 'useTemplate': {
+            const tpl = s.jobTemplates[+el.dataset.i];
+            if (!tpl) return;
+            if (!jobAllowedFor(p, tpl.job.type)) { toastr.warning(t('tplBlocked')); return; }
+            const nj = templateToJob(tpl); p.jobs.push(nj); ui.exp[nj.id] = true;
+            toastr.success(t('tplUsed')); return afterChange();
+        }
+        case 'delTemplate': if (confirm(t('confirm'))) { s.jobTemplates.splice(+el.dataset.i, 1); return afterChange(); } return;
+        case 'copyJob': {
+            const to = P[el.closest('.jx-row')?.querySelector('.jx-copyto')?.value];
+            if (!to) return;
+            if (!jobAllowedFor(to, j.type)) { toastr.warning(t('tplBlocked')); return; }
+            to.jobs.push(templateToJob(jobToTemplate(j)));
+            toastr.success(`${t('tplCopied')} → ${to.name}`); return afterChange();
+        }
+        case 'accent': s.accent = el.dataset.v || ''; save(); applyAccent(); rerenderAll(); return;
         case 'archiveJob': jp.history.push(clone(j)); jp.jobs = jp.jobs.filter((x) => x.id !== j.id); return afterChange();
         case 'filterType': ui.filters.type = el.dataset.v; saveFilters(); return renderPanel();
         case 'searchBoard': case 'scan': {
@@ -2102,7 +2224,7 @@ function buildUi() {
     const fab = document.createElement('div');
     fab.id = 'jx_fab'; fab.title = t('title');
     fab.innerHTML = '<svg viewBox="0 -0.5 24 24" width="26" height="26" aria-hidden="true" style="display:block;pointer-events:none"><path d="M9 6V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" fill="none" stroke="#a0561c" stroke-width="1.8" stroke-linecap="round"/><rect x="2.5" y="6" width="19" height="14" rx="2.5" fill="#c97a3a" stroke="#8a4513" stroke-width="1"/><path d="M2.5 11.5h19" stroke="#8a4513" stroke-width=".8" opacity=".6"/><rect x="10.5" y="11" width="3" height="4" rx=".7" fill="#f2c14e" stroke="#b8860b" stroke-width=".6"/></svg>';
-    fab.style.cssText = 'position:fixed;box-sizing:border-box;padding:0;margin:0;line-height:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;background:var(--SmartThemeBlurTintColor,#222);border:2px solid var(--SmartThemeQuoteColor,#7aa2ff);box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none;touch-action:none;';
+    fab.style.cssText = 'position:fixed;box-sizing:border-box;padding:0;margin:0;line-height:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;background:var(--SmartThemeBlurTintColor,#222);border:2px solid var(--jx-accent,var(--SmartThemeQuoteColor,#7aa2ff));box-shadow:0 4px 14px rgba(0,0,0,.45);user-select:none;touch-action:none;';
     fabDefaults(fab);
     document.body.appendChild(fab);
     initFab(fab);
